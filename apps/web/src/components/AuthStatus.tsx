@@ -1,18 +1,26 @@
 import type { PublicUser } from "@caro/shared";
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, logoutErrorMessage } from "../lib/api";
 
 // Muestra los enlaces de ingreso o, si hay sesión, el saludo y el botón para salir.
 export function AuthStatus() {
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
+  const [logoutError, setLogoutError] = useState<string>();
 
   useEffect(() => {
     api.me().then((result) => setUser(result.ok ? result.data.user : null));
   }, []);
 
+  // Solo se muestra como "afuera" si el servidor confirmó que cerró la sesión; si no,
+  // la cookie sigue valiendo y hay que decírselo a la clienta.
   async function logout() {
-    await api.logout();
-    setUser(null);
+    const result = await api.logout();
+    if (result.ok) {
+      setLogoutError(undefined);
+      setUser(null);
+    } else {
+      setLogoutError(logoutErrorMessage);
+    }
   }
 
   // Mientras se consulta la sesión se reserva el espacio para que la página no salte.
@@ -31,6 +39,11 @@ export function AuthStatus() {
         >
           Salir
         </button>
+        {logoutError && (
+          <p role="alert" className="text-sm text-red-700">
+            {logoutError}
+          </p>
+        )}
       </div>
     );
   }

@@ -54,13 +54,23 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
   switch (result.error) {
     case "invalid_credentials":
       return "Celular o contraseña incorrectos.";
-    case "too_many_attempts": {
-      const minutes = Math.ceil((result.retryAfterSeconds ?? 900) / 60);
-      return `Demasiados intentos. Vuelve a intentarlo en ${minutes} ${minutes === 1 ? "minuto" : "minutos"}.`;
-    }
+    case "too_many_attempts":
+      return `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds ?? 900)}.`;
     case "network":
       return "No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.";
     default:
       return "Algo salió mal. Inténtalo de nuevo en un momento.";
   }
 }
+
+// Espera legible: en horas si es de una hora o más, si no en minutos (redondeando hacia arriba).
+function waitTime(seconds: number): string {
+  if (seconds >= 3600) {
+    const hours = Math.ceil(seconds / 3600);
+    return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
+}
+
+export const logoutErrorMessage = "No pudimos cerrar tu sesión. Inténtalo de nuevo.";
