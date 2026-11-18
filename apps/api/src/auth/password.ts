@@ -13,12 +13,12 @@ export function verifyPassword(passwordHash: string, password: string): Promise<
   return verify(passwordHash, password);
 }
 
-let dummyHash: Promise<string> | undefined;
+// Cuando el teléfono no existe se verifica igual contra un hash ficticio, así la
+// respuesta tarda lo mismo y no revela qué cuentas existen. Se calcula al cargar el
+// módulo para que el primer ingreso de cada instancia no tarde más que los demás.
+const dummyHash = hashPassword(randomBytes(16).toString("hex"));
 
-// Cuando el teléfono no existe se verifica igual contra un hash ficticio,
-// así la respuesta tarda lo mismo y no revela qué cuentas existen.
 export async function verifyAgainstDummy(password: string): Promise<false> {
-  dummyHash ??= hashPassword(randomBytes(16).toString("hex"));
   await verify(await dummyHash, password);
   return false;
 }

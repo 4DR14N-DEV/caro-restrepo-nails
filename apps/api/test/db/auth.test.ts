@@ -249,6 +249,20 @@ describe("POST /api/auth/login", () => {
     expect((await login("secreta123")).status).toBe(200);
   });
 
+  it("al ingresar borra la sesión anterior que traía el navegador", async () => {
+    const previous = sessionToken(await login("secreta123"));
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .set("Cookie", `session=${previous}`)
+      .send({ phone: "3001234567", password: "secreta123" });
+
+    expect(response.status).toBe(200);
+    const rows = await database.db.select().from(sessions);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe(hashToken(sessionToken(response) ?? ""));
+  });
+
   it("responde 400 si falta la contraseña", async () => {
     const response = await login("");
 
