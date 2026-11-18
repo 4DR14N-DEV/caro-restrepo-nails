@@ -1,0 +1,5 @@
+dist
+.astro
+.netlify
+pnpm-lock.yaml
+apps/api/drizzle/meta
