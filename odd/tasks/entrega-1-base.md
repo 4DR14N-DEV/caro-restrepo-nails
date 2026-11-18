@@ -13,14 +13,14 @@ Rama: `feat/entrega-1-base` · Estrategia de entrega: ask-on-risk · Runner de t
 
 ## Tasks
 
-| ID  | Specs    | Ruta   | Estado    | Commit |
-| --- | -------- | ------ | --------- | ------ |
-| T1  | S1, S7   | inline | pendiente | —      |
-| T2  | S2, S7   | inline | pendiente | —      |
-| T3  | S3       | inline | pendiente | —      |
-| T4  | S4, S5   | inline | pendiente | —      |
-| T5  | S2 (web) | inline | pendiente | —      |
-| T6  | S6       | inline | pendiente | —      |
+| ID  | Specs    | Ruta   | Estado | Commit           |
+| --- | -------- | ------ | ------ | ---------------- |
+| T1  | S1, S7   | inline | hecho  | 8689835          |
+| T2  | S2, S7   | inline | hecho  | 8689835, d0a3fc7 |
+| T3  | S3       | inline | hecho  | 8689835          |
+| T4  | S4, S5   | inline | hecho  | be40d32          |
+| T5  | S2 (web) | inline | hecho  | 5b1bb7b          |
+| T6  | S6       | inline | hecho  | 5b1bb7b, d0a3fc7 |
 
 Ruta: todo inline; no hay trigger de writer (las unidades dependen entre sí y cada una es chica).
 
@@ -29,3 +29,9 @@ Ruta: todo inline; no hay trigger de writer (las unidades dependen entre sí y c
 - L1 (2026-11-18, usuario): "Sí, va, arranquemos con la entrega 1. una unica cosa, comentarios en español, al momento somos tu y yo en el proyecto"
 - L2 (2026-11-18, usuario): "Recurda que el gestor de paquetes es pnpm"
 - L3: TypeScript fijado en 6.0.x porque typescript-eslint 8.73 exige `typescript <6.1.0` (TS 7 es `latest`).
+- L4: RED/GREEN observado: health (módulo inexistente → 3 verdes); anti-superposición (2 rojos por falta de restricción → 6 verdes con 0001); seed (módulo inexistente → 10 verdes).
+- L5: Verificador independiente (ítem 5): S1–S5 y S7 pasan; S6 bloqueado porque pnpm 12 rechaza `install --frozen-lockfile` sin aprobar esbuild. Corregido con `allowBuilds` (d0a3fc7); recheck: install, format, lint, typecheck, test, test:db y build en exit 0.
+- L6: Pendiente de verificar en el primer deploy: redirección `/api/*` → función con serverless-http, bundling con esbuild y Node 24 en Netlify.
+- L7: Sugerencias no bloqueantes para entregas siguientes: índices en `appointment_services.service_id` y `push_subscriptions.user_id`; la app debe actualizar `updated_at`; confirmar con Caro si un servicio puede repetirse en una cita.
+- L8: Revisión nativa: assess high (ítem 5 + shell en CI), lentes risk y reliability. El candidato completo (desde el árbol vacío) excedió el presupuesto de contexto del revisor (`lens_context_budget_exceeded`, sin autoridad creada); se redujo al tramo de riesgo be40d32..d0a3fc7 (CI, Netlify, política de builds). Consentimiento otorgado; resultado: aprobado y acuse hecho (`authority: burned`, lineage review-ea64b5e959474286).
+- L9: Hallazgos no bloqueantes de la revisión: (a) fijar las actions de GitHub por SHA en vez de tag mayor; (b) "caro_test no existe en CI": descartado, `test/db/helpers.ts` la crea vía la base `postgres` y el usuario del servicio es superusuario; (c) confirmar en el primer deploy que Express recibe `/api/...` y no `/.netlify/functions/api/...` (ya anotado en L6).
