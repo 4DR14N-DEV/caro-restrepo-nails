@@ -1,5 +1,5 @@
 {
-  "id": "7f2a6efc-ee8f-4405-824f-21949cfc8216",
+  "id": "4ded78e4-b997-4ec2-91ac-39cc6fca4a1e",
   "prevId": "a8697244-9db2-436a-8104-3c0ed75a0536",
   "version": "7",
   "dialect": "postgresql",
@@ -312,49 +312,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.login_throttles": {
-      "name": "login_throttles",
-      "schema": "",
-      "columns": {
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "failed_count": {
-          "name": "failed_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "window_started_at": {
-          "name": "window_started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "login_throttles_failed_count": {
-          "name": "login_throttles_failed_count",
-          "value": "\"login_throttles\".\"failed_count\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.push_subscriptions": {
       "name": "push_subscriptions",
       "schema": "",
@@ -426,6 +383,49 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rate_limits": {
+      "name": "rate_limits",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "failed_count": {
+          "name": "failed_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "window_started_at": {
+          "name": "window_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "rate_limits_failed_count": {
+          "name": "rate_limits_failed_count",
+          "value": "\"rate_limits\".\"failed_count\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.schedule_exceptions": {

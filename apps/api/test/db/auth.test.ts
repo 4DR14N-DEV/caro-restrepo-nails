@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
-import { loginThrottles, sessions, users } from "../../src/db/schema.js";
+import { rateLimits, sessions, users } from "../../src/db/schema.js";
 import { createTestDatabase } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
@@ -22,11 +22,12 @@ const registration = {
 
 beforeAll(async () => {
   database = await createTestDatabase();
-  app = createApp({ db: database.db });
+  // En los tests la IP de la clienta llega en una cabecera, para simular varias.
+  app = createApp({ db: database.db, clientIp: (req) => req.get("x-test-ip") ?? "203.0.113.1" });
 });
 
 beforeEach(async () => {
-  await database.pool.query("TRUNCATE users, sessions, login_throttles CASCADE");
+  await database.pool.query("TRUNCATE users, sessions, rate_limits CASCADE");
 });
 
 afterAll(async () => {
@@ -52,16 +53,17 @@ async function register(body: object = registration) {
   return request(app).post("/api/auth/register").send(body);
 }
 
-async function login(password: string, phone = "3001234567") {
-  return request(app).post("/api/auth/login").send({ phone, password });
+async function login(password: string, phone = "3001234567", ip = "203.0.113.1") {
+  return request(app).post("/api/auth/login").set("x-test-ip", ip).send({ phone, password });
 }
 
-async function throttleRow(phone = "+573001234567") {
-  const [row] = await database.db
-    .select()
-    .from(loginThrottles)
-    .where(eq(loginThrottles.phone, phone));
+async function limitRow(key: string) {
+  const [row] = await database.db.select().from(rateLimits).where(eq(rateLimits.key, key));
   return row;
+}
+
+function throttleRow(phone = "+573001234567") {
+  return limitRow(`login-phone:${phone}`);
 }
 
 describe("POST /api/auth/register", () => {
@@ -190,7 +192,7 @@ describe("POST /api/auth/login", () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       await login("otra-clave");
     }
-    await database.db.update(loginThrottles).set({ lockedUntil: sql`now() - interval '1 second'` });
+    await database.db.update(rateLimits).set({ lockedUntil: sql`now() - interval '1 second'` });
 
     const response = await login("secreta123");
     expect(response.status).toBe(200);
@@ -225,8 +227,8 @@ describe("POST /api/auth/login", () => {
   });
 
   it("no cuenta los fallos de hace más de 15 minutos", async () => {
-    await database.db.insert(loginThrottles).values({
-      phone: "+573001234567",
+    await database.db.insert(rateLimits).values({
+      key: "login-phone:+573001234567",
       failedCount: 4,
       windowStartedAt: sql`now() - interval '16 minutes'`,
     });
@@ -330,5 +332,86 @@ describe("POST /api/auth/logout", () => {
 
   it("responde 204 aunque no haya sesión", async () => {
     expect((await request(app).post("/api/auth/logout")).status).toBe(204);
+  });
+});
+
+describe("límites por IP y limpieza", () => {
+  it("20 ingresos fallidos desde una IP la bloquean, aunque prueben celulares distintos", async () => {
+    await register();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const phone = `31000000${String(attempt).padStart(2, "0")}`;
+      expect((await login("clave-comun", phone, "198.51.100.7")).status).toBe(401);
+    }
+
+    // Desde esa IP ya ni la contraseña correcta entra; desde otra IP sí.
+    const blocked = await login("secreta123", "3001234567", "198.51.100.7");
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(890);
+    expect((await login("secreta123", "3001234567", "198.51.100.8")).status).toBe(200);
+  });
+
+  it("los ingresos correctos no suman al límite de la IP", async () => {
+    await register();
+    for (let attempt = 0; attempt < 25; attempt++) {
+      expect((await login("secreta123")).status).toBe(200);
+    }
+    expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+  });
+
+  it("5 registros desde una IP la bloquean 1 hora", async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await register({ ...registration, phone: `320000000${attempt}` });
+      expect(response.status).toBe(201);
+    }
+
+    const response = await register({ ...registration, phone: "3200000009" });
+    expect(response.status).toBe(429);
+    expect(response.body).toEqual({ error: "too_many_attempts" });
+    expect(Number(response.headers["retry-after"])).toBeGreaterThan(3590);
+    expect(Number(response.headers["retry-after"])).toBeLessThanOrEqual(3600);
+    expect(await database.db.select().from(users)).toHaveLength(5);
+  });
+
+  it("los registros con celular repetido también cuentan para el límite", async () => {
+    await register();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      expect((await register()).status).toBe(409);
+    }
+    expect((await register({ ...registration, phone: "3200000009" })).status).toBe(429);
+  });
+
+  it("un error del servidor no cuenta como intento fallido", async () => {
+    await register();
+    // Un hash dañado hace fallar la verificación con una excepción (500).
+    await database.db.update(users).set({ passwordHash: "hash-dañado" });
+
+    const response = await login("secreta123");
+
+    expect(response.status).toBe(500);
+    expect((await throttleRow())?.failedCount ?? 0).toBe(0);
+    expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+  });
+
+  it("borra las filas de límites vencidas", async () => {
+    await database.db.insert(rateLimits).values([
+      {
+        key: "login-phone:+573111111111",
+        failedCount: 3,
+        windowStartedAt: sql`now() - interval '2 hours'`,
+      },
+      {
+        key: "login-ip:192.0.2.1",
+        failedCount: 0,
+        windowStartedAt: sql`now() - interval '2 hours'`,
+        lockedUntil: sql`now() - interval '1 hour'`,
+      },
+      { key: "login-phone:+573222222222", failedCount: 3, windowStartedAt: sql`now()` },
+    ]);
+
+    await login("otra-clave");
+
+    expect(await limitRow("login-phone:+573111111111")).toBeUndefined();
+    expect(await limitRow("login-ip:192.0.2.1")).toBeUndefined();
+    expect(await limitRow("login-phone:+573222222222")).toBeDefined();
   });
 });

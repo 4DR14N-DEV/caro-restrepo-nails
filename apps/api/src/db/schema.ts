@@ -75,17 +75,19 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_id_idx").on(t.userId)],
 );
 
-// Límite de intentos de ingreso: una fila por teléfono, exista o no la cuenta,
-// para no revelar qué teléfonos están registrados.
-export const loginThrottles = pgTable(
-  "login_throttles",
+// Límites de intentos (ingreso y registro). La clave es `<tipo>:<valor>`, por ejemplo
+// `login-phone:+573001234567` o `login-ip:203.0.113.1`. Hay fila por teléfono exista o
+// no la cuenta, para no revelar qué teléfonos están registrados.
+export const rateLimits = pgTable(
+  "rate_limits",
   {
-    phone: text("phone").primaryKey(),
+    key: text("key").primaryKey(),
+    // Intentos fallidos más intentos en curso dentro de la ventana.
     failedCount: integer("failed_count").notNull().default(0),
     windowStartedAt: timestamptz("window_started_at").notNull(),
     lockedUntil: timestamptz("locked_until"),
   },
-  (t) => [check("login_throttles_failed_count", sql`${t.failedCount} >= 0`)],
+  (t) => [check("rate_limits_failed_count", sql`${t.failedCount} >= 0`)],
 );
 
 export const services = pgTable(

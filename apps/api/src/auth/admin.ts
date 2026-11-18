@@ -1,7 +1,8 @@
 import { nameSchema, passwordSchema, phoneSchema } from "@caro/shared";
 import { eq, sql } from "drizzle-orm";
 import type { Database } from "../db/client.js";
-import { loginThrottles, sessions, users } from "../db/schema.js";
+import { sessions, users } from "../db/schema.js";
+import { clearAttempts, limitKey, loginPhoneLimit } from "./rate-limit.js";
 import { hashPassword } from "./password.js";
 
 // Valida un campo con el esquema compartido y lanza el mensaje de error tal cual.
@@ -44,7 +45,7 @@ export async function createAdmin(
     // celular de Caro), se cierran todas sus sesiones: solo entra quien sepa la nueva
     // contraseña. También se quita un posible bloqueo por intentos fallidos.
     await tx.delete(sessions).where(eq(sessions.userId, user.id));
-    await tx.delete(loginThrottles).where(eq(loginThrottles.phone, phone));
+    await clearAttempts(tx, limitKey(loginPhoneLimit, phone));
     return user;
   });
 }

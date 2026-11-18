@@ -1,14 +1,19 @@
 import express, { type ErrorRequestHandler, type Express } from "express";
-import { authRouter } from "./auth/routes.js";
+import { authRouter, type ClientIp } from "./auth/routes.js";
 import type { Database } from "./db/client.js";
 
 export interface AppDependencies {
   db: Database;
+  // Cómo obtener la IP de la clienta. Depende de la plataforma (en Netlify viene en una
+  // cabecera); por defecto, la dirección de la conexión.
+  clientIp?: ClientIp;
 }
+
+const socketAddress: ClientIp = (req) => req.socket.remoteAddress;
 
 // Construye la aplicación Express sin atarla a ninguna plataforma.
 // El servidor local y el adaptador de Netlify solo la envuelven.
-export function createApp({ db }: AppDependencies): Express {
+export function createApp({ db, clientIp = socketAddress }: AppDependencies): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -18,7 +23,7 @@ export function createApp({ db }: AppDependencies): Express {
     res.json({ status: "ok" });
   });
 
-  app.use("/api/auth", authRouter(db));
+  app.use("/api/auth", authRouter(db, clientIp));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

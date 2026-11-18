@@ -11,7 +11,17 @@ import {
   SESSION_DAYS,
   validateSession,
 } from "./sessions.js";
-import { claimAttempt, clearFailures, lockIfExhausted } from "./throttle.js";
+import {
+  claimAttempt,
+  clearAttempts,
+  limitKey,
+  lockIfExhausted,
+  loginIpLimit,
+  loginPhoneLimit,
+  pruneExpired,
+  registerIpLimit,
+  releaseAttempt,
+} from "./rate-limit.js";
 
 const COOKIE_NAME = "session";
 
@@ -53,32 +63,65 @@ function toPublicUser(user: { id: string; name: string; phone: string; role: Pub
   return { id: user.id, name: user.name, phone: user.phone, role: user.role } satisfies PublicUser;
 }
 
-export function authRouter(db: Database): Router {
+function tooManyAttempts(res: Response, retryAfterSeconds: number): void {
+  res
+    .set("Retry-After", String(retryAfterSeconds))
+    .status(429)
+    .json({ error: "too_many_attempts" });
+}
+
+// Devuelve la IP de la clienta, o undefined si la plataforma no la informa.
+export type ClientIp = (req: Request) => string | undefined;
+
+export function authRouter(db: Database, clientIp: ClientIp): Router {
   const router = Router();
 
   router.post("/register", async (req, res) => {
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) return invalidInput(res, parsed.error);
 
-    const { name, phone, password } = parsed.data;
-    const [user] = await db
-      .insert(users)
-      .values({
-        name,
-        phone,
-        passwordHash: await hashPassword(password),
-        consentAcceptedAt: new Date(),
-      })
-      .onConflictDoNothing({ target: users.phone })
-      .returning();
-
-    if (!user?.phone) {
-      res.status(409).json({ error: "phone_taken" });
-      return;
+    await pruneExpired(db);
+    const ip = clientIp(req);
+    // Cada intento de registro cuenta, salga bien o mal: así no se puede consultar en
+    // masa qué celulares tienen cuenta.
+    const ipKey = ip === undefined ? undefined : limitKey(registerIpLimit, ip);
+    if (ipKey) {
+      const retryAfter = await claimAttempt(db, registerIpLimit, ipKey);
+      if (retryAfter !== null) return tooManyAttempts(res, retryAfter);
     }
 
-    setSessionCookie(res, await createSession(db, user.id));
-    res.status(201).json({ user: toPublicUser({ ...user, phone: user.phone }) });
+    try {
+      const { name, phone, password } = parsed.data;
+      // Se revisa antes de calcular Argon2, que es caro; el insert igual cubre la carrera.
+      const [existing] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.phone, phone));
+      const [user] = existing
+        ? []
+        : await db
+            .insert(users)
+            .values({
+              name,
+              phone,
+              passwordHash: await hashPassword(password),
+              consentAcceptedAt: new Date(),
+            })
+            .onConflictDoNothing({ target: users.phone })
+            .returning();
+
+      if (!user?.phone) {
+        res.status(409).json({ error: "phone_taken" });
+        return;
+      }
+
+      setSessionCookie(res, await createSession(db, user.id));
+      res.status(201).json({ user: toPublicUser({ ...user, phone: user.phone }) });
+    } catch (error) {
+      // Un error del servidor no es culpa de la clienta: no cuenta como intento.
+      if (ipKey) await releaseAttempt(db, ipKey);
+      throw error;
+    }
   });
 
   router.post("/login", async (req, res) => {
@@ -86,25 +129,49 @@ export function authRouter(db: Database): Router {
     if (!parsed.success) return invalidInput(res, parsed.error);
 
     const { phone, password } = parsed.data;
-    const retryAfter = await claimAttempt(db, phone);
+    await pruneExpired(db);
+
+    // Dos límites: por IP (frena probar una contraseña contra muchos celulares) y por
+    // teléfono (frena probar muchas contraseñas contra un celular).
+    const ip = clientIp(req);
+    const ipKey = ip === undefined ? undefined : limitKey(loginIpLimit, ip);
+    const phoneKey = limitKey(loginPhoneLimit, phone);
+
+    if (ipKey) {
+      const retryAfter = await claimAttempt(db, loginIpLimit, ipKey);
+      if (retryAfter !== null) return tooManyAttempts(res, retryAfter);
+    }
+    const retryAfter = await claimAttempt(db, loginPhoneLimit, phoneKey);
     if (retryAfter !== null) {
-      res.set("Retry-After", String(retryAfter)).status(429).json({ error: "too_many_attempts" });
-      return;
+      if (ipKey) await releaseAttempt(db, ipKey);
+      return tooManyAttempts(res, retryAfter);
     }
 
-    const [user] = await db.select().from(users).where(eq(users.phone, phone));
-    const valid =
-      user?.passwordHash && user.phone
-        ? await verifyPassword(user.passwordHash, password)
-        : await verifyAgainstDummy(password);
+    let user: typeof users.$inferSelect | undefined;
+    let valid: boolean;
+    try {
+      [user] = await db.select().from(users).where(eq(users.phone, phone));
+      valid =
+        user?.passwordHash && user.phone
+          ? await verifyPassword(user.passwordHash, password)
+          : await verifyAgainstDummy(password);
+    } catch (error) {
+      // Un error del servidor no es culpa de la clienta: no cuenta como intento.
+      if (ipKey) await releaseAttempt(db, ipKey);
+      await releaseAttempt(db, phoneKey);
+      throw error;
+    }
 
     if (!valid || !user?.phone) {
-      await lockIfExhausted(db, phone);
+      if (ipKey) await lockIfExhausted(db, loginIpLimit, ipKey);
+      await lockIfExhausted(db, loginPhoneLimit, phoneKey);
       res.status(401).json({ error: "invalid_credentials" });
       return;
     }
 
-    await clearFailures(db, phone);
+    // Un acierto borra los fallos del teléfono y no suma al conteo de la IP.
+    await clearAttempts(db, phoneKey);
+    if (ipKey) await releaseAttempt(db, ipKey);
     await deleteExpiredSessions(db, user.id);
     setSessionCookie(res, await createSession(db, user.id));
     res.json({ user: toPublicUser({ ...user, phone: user.phone }) });

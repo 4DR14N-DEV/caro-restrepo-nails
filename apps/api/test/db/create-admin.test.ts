@@ -14,7 +14,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await database.pool.query("TRUNCATE users, sessions, login_throttles CASCADE");
+  await database.pool.query("TRUNCATE users, sessions, rate_limits CASCADE");
 });
 
 afterAll(async () => {

@@ -13,4 +13,10 @@ if (!url) {
 // Una conexión por instancia: cada función atiende una petición a la vez.
 const { db } = createDatabase(url ?? "", { max: 1 });
 
-export const handler = serverless(createApp({ db }));
+// Netlify informa la IP real de la clienta en esta cabecera (la pone Netlify, no el
+// navegador). Si faltara, la API omite los límites por IP en vez de tratar a todas las
+// clientas como una sola IP.
+const clientIp = (req: { get(name: string): string | undefined }) =>
+  req.get("x-nf-client-connection-ip") || undefined;
+
+export const handler = serverless(createApp({ db, clientIp }));
