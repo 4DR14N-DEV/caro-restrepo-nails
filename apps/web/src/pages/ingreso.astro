@@ -1,0 +1,18 @@
+---
+import { LoginForm } from "../components/LoginForm";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Ingresar · Caro Restrepo Nails"
+  description="Ingresa con tu celular para ver y reservar tus citas en Caro Restrepo Nails."
+>
+  <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
+    <a href="/" class="text-sm text-neutral-600 underline">← Volver al inicio</a>
+    <h1 class="text-2xl font-semibold tracking-tight">Ingresar</h1>
+    <LoginForm client:load />
+    <p class="text-center text-sm text-neutral-600">
+      ¿No tienes cuenta? <a href="/registro" class="font-medium underline">Créala aquí</a>
+    </p>
+  </main>
+</BaseLayout>
