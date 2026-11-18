@@ -1,8 +1,10 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-// BORRADOR pendiente de revisión por Caro. Completar el canal de contacto antes de publicar.
-const contact = "[pendiente: celular o correo de contacto]";
+// Borrador pendiente de revisión por Caro.
+// Canal para que las clientas ejerzan sus derechos: el WhatsApp de Caro.
+const whatsappNumber = "+57 300 744 5676";
+const whatsappUrl = "https://wa.me/573007445676";
 const updatedAt = "18 de noviembre de 2026";
 ---
 
@@ -19,7 +21,8 @@ const updatedAt = "18 de noviembre de 2026";
       <h2 class="text-lg font-semibold">Quién es responsable de tus datos</h2>
       <p>
         Caro Restrepo Nails es responsable del tratamiento de tus datos personales, de acuerdo con la
-        Ley 1581 de 2012 y el Decreto 1377 de 2013. Contacto: {contact}.
+        Ley 1581 de 2012 y el Decreto 1377 de 2013. Contacto: WhatsApp
+        <a href={whatsappUrl} class="font-medium underline">{whatsappNumber}</a>.
       </p>
     </section>
 
@@ -60,7 +63,8 @@ const updatedAt = "18 de noviembre de 2026";
     <section class="flex flex-col gap-2">
       <h2 class="text-lg font-semibold">Cómo ejercer tus derechos</h2>
       <p>
-        Escríbenos a {contact}. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15
+        Escríbenos por WhatsApp al
+        <a href={whatsappUrl} class="font-medium underline">{whatsappNumber}</a>. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15
         días hábiles, como indica la ley.
       </p>
     </section>
