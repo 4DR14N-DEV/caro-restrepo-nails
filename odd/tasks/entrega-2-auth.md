@@ -15,13 +15,13 @@ Rama: `feat/entrega-2-auth` · Estrategia de entrega: ask-on-risk · Runner de t
 
 ## Tasks
 
-| ID  | Specs          | Ruta   | Estado    | Commit |
-| --- | -------------- | ------ | --------- | ------ |
-| T1  | S1, S2, S3, S7 | inline | pendiente |        |
-| T2  | S5             | inline | pendiente |        |
-| T3  | S3, S4, S5, S8 | inline | pendiente |        |
-| T4  | S6             | inline | pendiente |        |
-| T5  | S7, S9         | inline | pendiente |        |
+| ID  | Specs          | Ruta   | Estado | Commit           |
+| --- | -------------- | ------ | ------ | ---------------- |
+| T1  | S1, S2, S3, S7 | inline | hecho  | d536874          |
+| T2  | S5             | inline | hecho  | 054f848          |
+| T3  | S3, S4, S5, S8 | inline | hecho  | 5cdf57b, 8060d4e |
+| T4  | S6             | inline | hecho  | 32da171          |
+| T5  | S7, S9         | inline | hecho  | 1d2638c, c20d4f7 |
 
 Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), así que no hay trigger de writer. Riesgo: ítem 2 (autenticación) en T3/T4 e ítem 5 (dependencia nativa y deploy) en T3: verificador independiente al final de la entrega.
 
@@ -30,3 +30,7 @@ Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), as�
 - L1 (2026-11-18, usuario): "listo, ya mergeé el PR, arranquemos la entrega 2"
 - L2 (2026-11-18, usuario): "sí, me sirven todos, arranquemos" (aprueba la tabla de valores de S1–S7).
 - L3: Diseño. Límite de intentos con una fila por teléfono (`login_throttles`: fallos, inicio de ventana, bloqueado hasta), también para teléfonos inexistentes, para no revelar qué cuentas existen. Ingreso con teléfono inexistente verifica contra un hash ficticio para igualar tiempos. Token de sesión de 32 bytes aleatorios; en la base solo su SHA-256 (columna existente `sessions.id`). Renovación: si quedan menos de 15 días, se extiende a 30. `@node-rs/argon2` es binario nativo: va como `external_node_modules` en Netlify. En producción, `DATABASE_URL` debe usar el pooler en modo transacción (6543).
+- L4: RED/GREEN observado: shared (módulo inexistente → 17 verdes); auth (21 rojos con 404 → 21 verdes); create-admin (módulo inexistente → 3 verdes). `pnpm test:db` completo: 34 verdes. El comando `db:create-admin` se probó con una terminal simulada: no muestra la contraseña y guarda la cuenta admin con hash Argon2id.
+- L5: Corrección: lint falló en 5cdf57b por el parámetro `_next` del manejador de errores (Express lo necesita); excepción explícita en 8060d4e.
+- L6: T5 sin test automático en la web (no hay runner en `apps/web`; la validación está cubierta por los tests de `@caro/shared`). Chequeo funcional: `astro check` y build en verde; con la API y Astro en local, las 4 páginas responden 200 y por el proxy `/api` funcionan registro (201 + cookie `HttpOnly; Secure; SameSite=Lax`, 30 días), quién soy, salida (204) e ingreso fallido (401). Falta probarlo en un navegador real. La política de datos es un borrador: falta el canal de contacto (`[pendiente: celular o correo de contacto]`) y la revisión de Caro.
+- L7: Verificador independiente lanzado sobre 9c707bf..c20d4f7 (ítems 2 y 5).
