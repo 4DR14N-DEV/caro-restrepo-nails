@@ -12,6 +12,8 @@ Aplicación web de reservas para el spa de uñas de Caro Restrepo. Mobile first.
 apps/
   api/   → Express + Drizzle (Postgres). Corre en Netlify Functions.
   web/   → Astro + React en islas + Tailwind. Sitio estático.
+packages/
+  shared/ → Esquemas de Zod compartidos por la API y la web.
 ```
 
 ## Requisitos
@@ -31,19 +33,38 @@ docker compose up -d --wait
 cd apps/api
 DATABASE_URL=postgres://caro:caro@localhost:5433/caro pnpm db:migrate
 DATABASE_URL=postgres://caro:caro@localhost:5433/caro pnpm db:seed
+
+# Cuenta admin de Caro (pide nombre, celular y contraseña; la contraseña no se muestra)
+DATABASE_URL=postgres://caro:caro@localhost:5433/caro pnpm db:create-admin
+```
+
+Para desarrollar, corre la API y la web en dos terminales. La web reenvía `/api` a la API local,
+igual que Netlify en producción:
+
+```sh
+DATABASE_URL=postgres://caro:caro@localhost:5433/caro pnpm --filter @caro/api dev
+pnpm --filter @caro/web dev   # http://127.0.0.1:4321
 ```
 
 ## Comandos
 
-| Comando                               | Qué hace                                                            |
-| ------------------------------------- | ------------------------------------------------------------------- |
-| `pnpm --filter @caro/api dev`         | API local en `http://localhost:3000`                                |
-| `pnpm --filter @caro/web dev`         | Sitio local con Astro                                               |
-| `pnpm lint` / `pnpm format:check`     | ESLint y Prettier                                                   |
-| `pnpm typecheck`                      | Chequeo de tipos de todo el monorepo                                |
-| `pnpm test`                           | Tests unitarios y de HTTP                                           |
-| `pnpm test:db`                        | Tests de integración contra Postgres (requiere `TEST_DATABASE_URL`) |
-| `pnpm --filter @caro/api db:generate` | Genera una migración a partir de `src/db/schema.ts`                 |
+| Comando                                   | Qué hace                                                                         |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `pnpm --filter @caro/api dev`             | API local en `http://localhost:3000` (requiere `DATABASE_URL`)                   |
+| `pnpm --filter @caro/web dev`             | Sitio local con Astro; reenvía `/api` a la API local                             |
+| `pnpm lint` / `pnpm format:check`         | ESLint y Prettier                                                                |
+| `pnpm typecheck`                          | Chequeo de tipos de todo el monorepo                                             |
+| `pnpm test`                               | Tests unitarios y de HTTP                                                        |
+| `pnpm test:db`                            | Tests de integración contra Postgres (requiere `TEST_DATABASE_URL`)              |
+| `pnpm --filter @caro/api db:generate`     | Genera una migración a partir de `src/db/schema.ts`                              |
+| `pnpm --filter @caro/api db:create-admin` | Crea la cuenta admin de Caro o le cambia la contraseña (requiere `DATABASE_URL`) |
+
+## Producción (Netlify + Supabase)
+
+- Variable de entorno en Netlify: `DATABASE_URL` con el pooler de Supabase en **modo transacción**
+  (puerto `6543`), porque cada función abre su propia conexión.
+- Las migraciones y los comandos (`db:migrate`, `db:seed`, `db:create-admin`) se corren desde tu
+  máquina con el pooler en modo sesión (puerto `5432`).
 
 ## Convenciones
 

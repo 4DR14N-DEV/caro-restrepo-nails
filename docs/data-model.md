@@ -6,6 +6,7 @@ Postgres (Supabase), definido con Drizzle en `apps/api/src/db/schema.ts`. Dinero
 | ---------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `users`                | Clientas y Caro                   | `name`, `phone` (único), `password_hash`, `role` (`admin`/`client`), `consent_accepted_at`, `anonymized_at`                             |
 | `sessions`             | Sesiones activas                  | `id` (hash del token), `user_id`, `expires_at`                                                                                          |
+| `login_throttles`      | Límite de intentos de ingreso     | `phone` (clave, exista o no la cuenta), `failed_count`, `window_started_at`, `locked_until`                                             |
 | `services`             | Catálogo                          | `name` (único), `price_cop`, `duration_minutes`, `active`, `sort_order`                                                                 |
 | `appointments`         | Citas                             | `client_id`, `start_at`, `end_at`, `occupied_until`, `status`, `total_price_cop`, `created_by`, `cancelled_by`, `cancelled_at`, `notes` |
 | `appointment_services` | Servicios de cada cita            | `appointment_id`, `service_id`, copia de `service_name`, `price_cop`, `duration_minutes`                                                |
