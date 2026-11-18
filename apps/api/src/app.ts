@@ -25,6 +25,8 @@ export function createApp({ db }: AppDependencies): Express {
   });
 
   // Errores siempre en JSON y sin detalles internos.
+  // Express reconoce el manejador de errores por sus 4 parámetros: `_next` es obligatorio.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof SyntaxError && "body" in error) {
       res.status(400).json({ error: "invalid_json" });
