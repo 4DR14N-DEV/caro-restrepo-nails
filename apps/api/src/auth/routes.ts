@@ -11,7 +11,7 @@ import {
   SESSION_DAYS,
   validateSession,
 } from "./sessions.js";
-import { clearFailures, lockedSeconds, recordFailure } from "./throttle.js";
+import { claimAttempt, clearFailures, lockIfExhausted } from "./throttle.js";
 
 const COOKIE_NAME = "session";
 
@@ -86,7 +86,7 @@ export function authRouter(db: Database): Router {
     if (!parsed.success) return invalidInput(res, parsed.error);
 
     const { phone, password } = parsed.data;
-    const retryAfter = await lockedSeconds(db, phone);
+    const retryAfter = await claimAttempt(db, phone);
     if (retryAfter !== null) {
       res.set("Retry-After", String(retryAfter)).status(429).json({ error: "too_many_attempts" });
       return;
@@ -99,7 +99,7 @@ export function authRouter(db: Database): Router {
         : await verifyAgainstDummy(password);
 
     if (!valid || !user?.phone) {
-      await recordFailure(db, phone);
+      await lockIfExhausted(db, phone);
       res.status(401).json({ error: "invalid_credentials" });
       return;
     }

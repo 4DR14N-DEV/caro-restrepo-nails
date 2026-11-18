@@ -1,7 +1,7 @@
 import { nameSchema, passwordSchema, phoneSchema } from "@caro/shared";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Database } from "../db/client.js";
-import { users } from "../db/schema.js";
+import { loginThrottles, sessions, users } from "../db/schema.js";
 import { hashPassword } from "./password.js";
 
 // Valida un campo con el esquema compartido y lanza el mensaje de error tal cual.
@@ -28,15 +28,23 @@ export async function createAdmin(
   const password = parse(passwordSchema, input.password);
   const passwordHash = await hashPassword(password);
 
-  const [user] = await db
-    .insert(users)
-    .values({ name, phone, passwordHash, role: "admin", consentAcceptedAt: new Date() })
-    .onConflictDoUpdate({
-      target: users.phone,
-      set: { name, passwordHash, role: "admin", updatedAt: sql`now()` },
-    })
-    .returning({ id: users.id, name: users.name, phone: users.phone, role: users.role });
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({ name, phone, passwordHash, role: "admin", consentAcceptedAt: new Date() })
+      .onConflictDoUpdate({
+        target: users.phone,
+        set: { name, passwordHash, role: "admin", updatedAt: sql`now()` },
+      })
+      .returning({ id: users.id, name: users.name, phone: users.phone, role: users.role });
 
-  if (!user) throw new Error("No se pudo crear la cuenta admin.");
-  return user;
+    if (!user) throw new Error("No se pudo crear la cuenta admin.");
+
+    // Si el teléfono ya estaba registrado (por ejemplo, alguien se adelantó con el
+    // celular de Caro), se cierran todas sus sesiones: solo entra quien sepa la nueva
+    // contraseña. También se quita un posible bloqueo por intentos fallidos.
+    await tx.delete(sessions).where(eq(sessions.userId, user.id));
+    await tx.delete(loginThrottles).where(eq(loginThrottles.phone, phone));
+    return user;
+  });
 }

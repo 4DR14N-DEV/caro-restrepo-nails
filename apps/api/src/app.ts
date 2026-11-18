@@ -32,6 +32,10 @@ export function createApp({ db }: AppDependencies): Express {
       res.status(400).json({ error: "invalid_json" });
       return;
     }
+    if (error?.type === "entity.too.large") {
+      res.status(413).json({ error: "payload_too_large" });
+      return;
+    }
     console.error(error);
     res.status(500).json({ error: "internal_error" });
   };

@@ -197,6 +197,33 @@ describe("POST /api/auth/login", () => {
     expect(await throttleRow()).toBeUndefined();
   });
 
+  // Regresión: antes cada intento concurrente pasaba el chequeo de bloqueo antes de que
+  // se registraran los fallos de los demás.
+  it("con intentos simultáneos evalúa como máximo 5 contraseñas", async () => {
+    const burst = await Promise.all(
+      Array.from({ length: 20 }, (_, index) => login(`otra-clave-${index}`)),
+    );
+    const statuses = burst.map((response) => response.status);
+
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+  });
+
+  it("después de una ráfaga de fallos simultáneos, la contraseña correcta no entra", async () => {
+    await Promise.all(Array.from({ length: 12 }, (_, index) => login(`otra-clave-${index}`)));
+
+    const response = await login("secreta123");
+    expect(response.status).toBe(429);
+    expect((await throttleRow())?.lockedUntil).toBeInstanceOf(Date);
+  });
+
+  it("responde 413 si el cuerpo es demasiado grande", async () => {
+    const response = await login("x".repeat(200_000));
+
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({ error: "payload_too_large" });
+  });
+
   it("no cuenta los fallos de hace más de 15 minutos", async () => {
     await database.db.insert(loginThrottles).values({
       phone: "+573001234567",
