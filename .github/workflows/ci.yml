@@ -1,0 +1,44 @@
+# Verifica cada PR y cada push a main: formato, lint, tipos, tests y build.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: caro
+          POSTGRES_PASSWORD: caro
+          POSTGRES_DB: caro
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U caro"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgres://caro:caro@localhost:5433/caro_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:db
+      - run: pnpm --filter @caro/web build

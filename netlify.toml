@@ -1,0 +1,17 @@
+# Despliegue en Netlify: el sitio estático de Astro + la API de Express como función.
+[build]
+  command = "pnpm --filter @caro/web build"
+  publish = "apps/web/dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[functions]
+  directory = "apps/api/netlify/functions"
+  node_bundler = "esbuild"
+
+# Todas las rutas /api/* las atiende la función de Express.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
