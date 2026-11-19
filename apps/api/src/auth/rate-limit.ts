@@ -1,3 +1,4 @@
+import { isIPv4, isIPv6 } from "node:net";
 import { eq, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { rateLimits } from "../db/schema.js";
@@ -46,6 +47,45 @@ const LONGEST_WINDOW = sql`interval '1 hour'`;
 
 export function limitKey(limit: Limit, value: string): string {
   return `${limit.kind}:${value}`;
+}
+
+// Valor de la IP para los límites. Un proveedor suele darle a cada conexión IPv6 un
+// bloque /64 entero, así que contar por dirección dejaría saltarse el límite cambiando
+// de dirección dentro del bloque: se cuenta por bloque. Las IPv4 escritas como IPv6
+// (::ffff:a.b.c.d) se tratan como IPv4.
+export function ipBlock(ip: string): string {
+  // Se quita la zona de las direcciones locales (fe80::1%eth0).
+  const address = ip.split("%")[0]?.toLowerCase() ?? "";
+  if (isIPv4(address)) return address;
+  if (!isIPv6(address)) return ip;
+
+  const groups = expandIPv6(address);
+  if (groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) {
+    const [high = 0, low = 0] = groups.slice(6);
+    return [high >> 8, high & 255, low >> 8, low & 255].join(".");
+  }
+  return `${groups
+    .slice(0, 4)
+    .map((group) => group.toString(16))
+    .join(":")}::/64`;
+}
+
+// Los 8 grupos de 16 bits de una IPv6 ya validada, sin abreviar.
+function expandIPv6(address: string): number[] {
+  // Una IPv4 al final (::ffff:192.0.2.1) equivale a los dos últimos grupos.
+  const ipv4 = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(address);
+  const text = ipv4
+    ? address.slice(0, ipv4.index) +
+      [0, 2].map((i) => ((Number(ipv4[i + 1]) << 8) | Number(ipv4[i + 2])).toString(16)).join(":")
+    : address;
+
+  const parse = (part: string | undefined) =>
+    part ? part.split(":").map((group) => parseInt(group, 16)) : [];
+  const [head, tail] = text.split("::");
+  const start = parse(head);
+  if (tail === undefined) return start;
+  const end = parse(tail);
+  return [...start, ...new Array<number>(8 - start.length - end.length).fill(0), ...end];
 }
 
 // Reserva un intento ANTES de hacer el trabajo, en una sola sentencia atómica.
@@ -116,11 +156,17 @@ export async function clearAttempts(db: Database, key: string): Promise<void> {
 }
 
 // Borra las filas que ya no limitan nada: ventana vencida y sin bloqueo vigente.
-// Se llama en cada ingreso y registro para que la tabla no crezca sin límite.
+// Se llama en cada ingreso y registro para que la tabla no crezca sin límite. Es solo
+// limpieza: si falla, se registra el error y la petición sigue (las filas vencidas no
+// limitan a nadie, se borran en otra petición).
 export async function pruneExpired(db: Database): Promise<void> {
-  await db
-    .delete(rateLimits)
-    .where(
-      sql`${rateLimits.windowStartedAt} <= now() - ${LONGEST_WINDOW} AND (${rateLimits.lockedUntil} IS NULL OR ${rateLimits.lockedUntil} <= now())`,
-    );
+  try {
+    await db
+      .delete(rateLimits)
+      .where(
+        sql`${rateLimits.windowStartedAt} <= now() - ${LONGEST_WINDOW} AND (${rateLimits.lockedUntil} IS NULL OR ${rateLimits.lockedUntil} <= now())`,
+      );
+  } catch (error) {
+    console.error("No se pudieron borrar los límites vencidos:", error);
+  }
 }

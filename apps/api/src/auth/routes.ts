@@ -14,6 +14,7 @@ import {
 import {
   claimAttempt,
   clearAttempts,
+  ipBlock,
   limitKey,
   lockIfExhausted,
   loginIpLimit,
@@ -84,7 +85,7 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
     const ip = clientIp(req);
     // Cada intento de registro cuenta, salga bien o mal: así no se puede consultar en
     // masa qué celulares tienen cuenta.
-    const ipKey = ip === undefined ? undefined : limitKey(registerIpLimit, ip);
+    const ipKey = ip === undefined ? undefined : limitKey(registerIpLimit, ipBlock(ip));
     if (ipKey) {
       const retryAfter = await claimAttempt(db, registerIpLimit, ipKey);
       if (retryAfter !== null) return tooManyAttempts(res, retryAfter);
@@ -118,8 +119,13 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
       setSessionCookie(res, await createSession(db, user.id));
       res.status(201).json({ user: toPublicUser({ ...user, phone: user.phone }) });
     } catch (error) {
-      // Un error del servidor no es culpa de la clienta: no cuenta como intento.
-      if (ipKey) await releaseAttempt(db, ipKey);
+      // Un error del servidor no es culpa de la clienta: no cuenta como intento. Si
+      // devolverlo también falla, se registra aparte y se sigue con el error original.
+      if (ipKey) {
+        await releaseAttempt(db, ipKey).catch((releaseError: unknown) =>
+          console.error("No se pudo devolver el intento de registro:", releaseError),
+        );
+      }
       throw error;
     }
   });
@@ -134,7 +140,7 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
     // Dos límites: por IP (frena probar una contraseña contra muchos celulares) y por
     // teléfono (frena probar muchas contraseñas contra un celular).
     const ip = clientIp(req);
-    const ipKey = ip === undefined ? undefined : limitKey(loginIpLimit, ip);
+    const ipKey = ip === undefined ? undefined : limitKey(loginIpLimit, ipBlock(ip));
     const phoneKey = limitKey(loginPhoneLimit, phone);
 
     if (ipKey) {

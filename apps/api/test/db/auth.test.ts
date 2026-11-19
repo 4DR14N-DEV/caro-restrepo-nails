@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import { inspect } from "node:util";
 import { eq, sql } from "drizzle-orm";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.js";
 import { rateLimits, sessions, users } from "../../src/db/schema.js";
 import { createTestDatabase } from "./helpers.js";
@@ -452,5 +453,109 @@ describe("límites por IP y limpieza", () => {
     expect(await limitRow("login-phone:+573111111111")).toBeUndefined();
     expect(await limitRow("login-ip:192.0.2.1")).toBeUndefined();
     expect(await limitRow("login-phone:+573222222222")).toBeDefined();
+  });
+
+  it("si falla la limpieza, el registro y el ingreso siguen funcionando", async () => {
+    await database.db.insert(rateLimits).values({
+      key: "login-phone:+573111111111",
+      failedCount: 3,
+      windowStartedAt: sql`now() - interval '2 hours'`,
+    });
+    await database.pool.query(`
+      CREATE FUNCTION fail_prune() RETURNS trigger AS $$
+      BEGIN
+        IF OLD.window_started_at <= now() - interval '1 hour' THEN
+          RAISE EXCEPTION 'falla simulada de la limpieza';
+        END IF;
+        RETURN OLD;
+      END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_prune BEFORE DELETE ON rate_limits
+        FOR EACH ROW EXECUTE FUNCTION fail_prune();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await register()).status).toBe(201);
+      expect((await login("secreta123")).status).toBe(200);
+      expect(logged).toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_prune ON rate_limits;
+        DROP FUNCTION fail_prune();
+      `);
+    }
+  });
+
+  it("un error del servidor en el registro no cuenta para el límite de la IP", async () => {
+    await database.pool.query(`
+      CREATE FUNCTION fail_register() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'falla simulada del registro'; END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_register BEFORE INSERT ON users
+        FOR EACH ROW EXECUTE FUNCTION fail_register();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await register()).status).toBe(500);
+      expect((await limitRow("register-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_register ON users;
+        DROP FUNCTION fail_register();
+      `);
+    }
+  });
+
+  it("si además falla devolver el intento, se registra el error original del registro", async () => {
+    await database.pool.query(`
+      CREATE FUNCTION fail_register() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'falla simulada del registro'; END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_register BEFORE INSERT ON users
+        FOR EACH ROW EXECUTE FUNCTION fail_register();
+      CREATE FUNCTION fail_release() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.failed_count < OLD.failed_count THEN
+          RAISE EXCEPTION 'falla simulada al devolver';
+        END IF;
+        RETURN NEW;
+      END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_release BEFORE UPDATE ON rate_limits
+        FOR EACH ROW EXECUTE FUNCTION fail_release();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await register()).status).toBe(500);
+      // El manejador de errores registra el último: debe ser el del registro.
+      const lastLogged = inspect(logged.mock.calls.at(-1)?.[0]);
+      expect(lastLogged).toContain("falla simulada del registro");
+      expect(lastLogged).not.toContain("falla simulada al devolver");
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_register ON users;
+        DROP FUNCTION fail_register();
+        DROP TRIGGER fail_release ON rate_limits;
+        DROP FUNCTION fail_release();
+      `);
+    }
+  });
+
+  it("las IPv6 del mismo bloque /64 comparten el límite de la IP", async () => {
+    await register();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const phone = `31000000${String(attempt).padStart(2, "0")}`;
+      const ip = `2001:db8:1:2::${(attempt + 1).toString(16)}`;
+      expect((await login("clave-comun", phone, ip)).status).toBe(401);
+    }
+
+    expect((await login("secreta123", "3001234567", "2001:db8:1:2:ffff::1")).status).toBe(429);
+    expect((await login("secreta123", "3001234567", "2001:db8:1:3::1")).status).toBe(200);
   });
 });
