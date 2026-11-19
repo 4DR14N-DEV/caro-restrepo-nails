@@ -558,4 +558,16 @@ describe("límites por IP y limpieza", () => {
     expect((await login("secreta123", "3001234567", "2001:db8:1:2:ffff::1")).status).toBe(429);
     expect((await login("secreta123", "3001234567", "2001:db8:1:3::1")).status).toBe(200);
   });
+
+  it("una IPv4 escrita como IPv6 comparte el límite con la misma IPv4", async () => {
+    await register();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const phone = `31000000${String(attempt).padStart(2, "0")}`;
+      const ip = attempt % 2 ? "::ffff:198.51.100.7" : "198.51.100.7";
+      expect((await login("clave-comun", phone, ip)).status).toBe(401);
+    }
+
+    expect((await login("secreta123", "3001234567", "::ffff:c633:6407")).status).toBe(429);
+    expect((await login("secreta123", "3001234567", "198.51.100.8")).status).toBe(200);
+  });
 });

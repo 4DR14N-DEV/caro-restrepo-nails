@@ -27,7 +27,7 @@ Rama: `feat/entrega-2-auth` · Estrategia de entrega: ask-on-risk · Runner de t
 | T6  | S10 a–d        | inline | hecho  | ea678cd          |
 | T7  | S10 f–h        | inline | hecho  | e07cf00          |
 | T8  | S10 e, i       | inline | hecho  | 83b5650          |
-| T9  | S11 a–c        | inline | hecho  | (ver L21)        |
+| T9  | S11 a–c        | inline | hecho  | d353089 (+ L22)  |
 
 Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), así que no hay trigger de writer. Riesgo: ítem 2 (autenticación) en T3/T4 e ítem 5 (dependencia nativa y deploy) en T3: verificador independiente al final de la entrega.
 
@@ -54,3 +54,4 @@ Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), as�
 - L19: Revisión nativa de b7dab1a..d8e5e7e (lentes risk, resilience, reliability): aprobada sin bloqueos y acuse hecho (`authority: burned`, lineage review-5eca025ab2d95bf7). Hallazgos no bloqueantes: (R1-001) la IP sale de una cabecera, confirmar en el deploy preview que Netlify no acepta la del cliente; (R1-002) agrupar IPv6 por /64; (R4) `pruneExpired` sin protección en el camino del ingreso: si falla, el ingreso da 500; (R3) el registro no tiene test de que un error del servidor no cuenta, y un error al devolver el intento tapa el original.
 - L20 (2026-11-18, usuario): "corrígelos ahora antes de subir la rama, y dejame instrucciones para ir haciendo en netlify o supabase para establecer bien toda la infra"
 - L21: T9: RED observado en 3 tests (limpieza que falla → "expected 500 to be 201"; error tapado → se registraba el `UPDATE` de devolución; IPv6 del mismo /64 → "expected 200 to be 429") y en los 4 tests unitarios de `ipBlock` (función inexistente). El test de registro con error del servidor pasó desde el inicio (cubre comportamiento existente). GREEN: unit 7/7, DB 50/50; lint, typecheck y formato en verde. R1-001 sigue pendiente para el deploy preview. Índice para `pruneExpired`: no se agrega (la tabla solo guarda la última hora).
+- L22: Verificador independiente sobre d8e5e7e..d353089: sin bloqueos; S11 a–c pasan y sin regresión en S5 y S10 a–d (34 entradas límite de `ipBlock`; 5 registros desde un mismo /64 → el 6.º da 429; IPv4 y `::ffff:` comparten límite; limpieza que falla por `lock_timeout` → ingreso 200 con error registrado). Pruebas agregadas como tests de regresión (casos de `ipBlock` e IPv4 escrita como IPv6). Advertencias aceptadas: lo que no es una IP válida queda como clave propia (igual que antes; depende de R1-001); `::1.2.3.4` cae en el bloque de `::1`.
