@@ -141,24 +141,32 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
       const retryAfter = await claimAttempt(db, loginIpLimit, ipKey);
       if (retryAfter !== null) return tooManyAttempts(res, retryAfter);
     }
-    const retryAfter = await claimAttempt(db, loginPhoneLimit, phoneKey);
-    if (retryAfter !== null) {
-      if (ipKey) await releaseAttempt(db, ipKey);
-      return tooManyAttempts(res, retryAfter);
-    }
+
+    // Intentos reservados que todavía no se resolvieron. Si algo falla, se devuelven
+    // (un error del servidor no es culpa de la clienta) y cada uno una sola vez.
+    const pending = new Set<string>(ipKey ? [ipKey] : []);
+    const release = async (key: string) => {
+      if (pending.delete(key)) await releaseAttempt(db, key);
+    };
 
     let user: typeof users.$inferSelect | undefined;
     let valid: boolean;
     try {
+      const retryAfter = await claimAttempt(db, loginPhoneLimit, phoneKey);
+      if (retryAfter !== null) {
+        if (ipKey) await release(ipKey);
+        return tooManyAttempts(res, retryAfter);
+      }
+      pending.add(phoneKey);
+
       [user] = await db.select().from(users).where(eq(users.phone, phone));
       valid =
         user?.passwordHash && user.phone
           ? await verifyPassword(user.passwordHash, password)
           : await verifyAgainstDummy(password);
     } catch (error) {
-      // Un error del servidor no es culpa de la clienta: no cuenta como intento.
-      if (ipKey) await releaseAttempt(db, ipKey);
-      await releaseAttempt(db, phoneKey);
+      // Se intentan devolver todos aunque alguno falle.
+      await Promise.allSettled([...pending].map(release));
       throw error;
     }
 

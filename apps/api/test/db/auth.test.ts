@@ -406,6 +406,31 @@ describe("límites por IP y limpieza", () => {
     expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
   });
 
+  // Regresión: si fallaba la reserva del intento por teléfono, el de la IP quedaba contado.
+  it("un error al reservar el intento por teléfono tampoco cuenta para la IP", async () => {
+    await register();
+    await database.pool.query(`
+      CREATE FUNCTION fail_phone_limit() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.key LIKE 'login-phone:%' THEN RAISE EXCEPTION 'falla simulada'; END IF;
+        RETURN NEW;
+      END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_phone_limit BEFORE INSERT OR UPDATE ON rate_limits
+        FOR EACH ROW EXECUTE FUNCTION fail_phone_limit();
+    `);
+
+    try {
+      expect((await login("secreta123")).status).toBe(500);
+      expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    } finally {
+      await database.pool.query(`
+        DROP TRIGGER fail_phone_limit ON rate_limits;
+        DROP FUNCTION fail_phone_limit();
+      `);
+    }
+  });
+
   it("borra las filas de límites vencidas", async () => {
     await database.db.insert(rateLimits).values([
       {
