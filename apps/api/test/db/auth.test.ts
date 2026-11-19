@@ -50,8 +50,8 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function register(body: object = registration) {
-  return request(app).post("/api/auth/register").send(body);
+async function register(body: object = registration, ip = "203.0.113.1") {
+  return request(app).post("/api/auth/register").set("x-test-ip", ip).send(body);
 }
 
 async function login(password: string, phone = "3001234567", ip = "203.0.113.1") {
@@ -536,6 +536,9 @@ describe("límites por IP y limpieza", () => {
       const lastLogged = inspect(logged.mock.calls.at(-1)?.[0]);
       expect(lastLogged).toContain("falla simulada del registro");
       expect(lastLogged).not.toContain("falla simulada al devolver");
+      // Y la falla al devolver el intento sí ocurrió y quedó registrada aparte.
+      const allLogged = logged.mock.calls.map((call) => inspect(call)).join("\n");
+      expect(allLogged).toContain("falla simulada al devolver");
     } finally {
       logged.mockRestore();
       await database.pool.query(`
@@ -557,6 +560,21 @@ describe("límites por IP y limpieza", () => {
 
     expect((await login("secreta123", "3001234567", "2001:db8:1:2:ffff::1")).status).toBe(429);
     expect((await login("secreta123", "3001234567", "2001:db8:1:3::1")).status).toBe(200);
+  });
+
+  it("los registros desde un mismo bloque IPv6 /64 comparten el límite", async () => {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const response = await register(
+        { ...registration, phone: `320000000${attempt}` },
+        `2001:db8:5:6::${attempt}`,
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const blocked = await register({ ...registration, phone: "3200000006" }, "2001:db8:5:6::6");
+    expect(blocked.status).toBe(429);
+    const otherBlock = await register({ ...registration, phone: "3200000007" }, "2001:db8:5:7::1");
+    expect(otherBlock.status).toBe(201);
   });
 
   it("una IPv4 escrita como IPv6 comparte el límite con la misma IPv4", async () => {
