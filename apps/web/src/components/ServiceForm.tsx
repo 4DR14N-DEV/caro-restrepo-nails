@@ -18,9 +18,12 @@ interface Props {
   onCancel: () => void;
 }
 
-// Caro puede escribir "25.000" o "$25000": se quitan los separadores. Vacío no es 0.
+// Caro puede escribir "25.000" o "$25000". Los puntos solo se quitan si son de miles
+// ("1.500.000"); "25.5" queda como decimal y el esquema lo rechaza, en vez de guardar
+// 255 sin avisar. Vacío no es 0.
 function toNumber(value: FormDataEntryValue | null): number {
-  const digits = String(value ?? "").replace(/[$.\s]/g, "");
+  const text = String(value ?? "").replace(/[$\s]/g, "");
+  const digits = /^\d{1,3}(\.\d{3})+$/.test(text) ? text.replaceAll(".", "") : text;
   return digits === "" ? Number.NaN : Number(digits);
 }
 
