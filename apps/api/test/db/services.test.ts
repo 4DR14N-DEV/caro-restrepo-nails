@@ -494,3 +494,40 @@ describe("PATCH /api/admin/services/:id", () => {
     }
   });
 });
+
+// Antes se descartaban sin avisar: el alta respondía 201 y el servicio quedaba activo.
+describe("campos desconocidos", () => {
+  it("el alta los rechaza con 400 y no guarda nada", async () => {
+    const { cookie } = await asAdmin();
+
+    const response = await request(app)
+      .post("/api/admin/services")
+      .set("Cookie", cookie)
+      .send({ ...newService, active: false, sortOrder: 7 });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: "invalid_input",
+      fields: { form: "No se aceptan estos campos: active, sortOrder." },
+    });
+    expect(await database.db.select().from(services)).toEqual([]);
+  });
+
+  it("la edición los rechaza con 400 y no cambia nada", async () => {
+    const { cookie } = await asAdmin();
+    const service = await insertService();
+
+    const response = await request(app)
+      .patch(`/api/admin/services/${service.id}`)
+      .set("Cookie", cookie)
+      .send({ priceCop: 20000, sortOrder: 1 });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: "invalid_input",
+      fields: { form: "No se aceptan estos campos: sortOrder." },
+    });
+    const [unchanged] = await database.db.select().from(services);
+    expect(unchanged?.priceCop).toBe(15000);
+  });
+});

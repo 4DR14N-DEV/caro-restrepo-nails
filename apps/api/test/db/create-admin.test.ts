@@ -1,9 +1,11 @@
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
 import { createAdmin } from "../../src/auth/admin.js";
 import { sessions, users } from "../../src/db/schema.js";
-import { createTestDatabase } from "./helpers.js";
+import { createTestDatabase, testDatabaseUrl } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
 
@@ -85,6 +87,44 @@ describe("createAdmin", () => {
     await expect(createAdmin(database.db, { ...caro, phone: "12345" })).rejects.toThrow(
       "Escribe un celular de 10 dígitos que empiece por 3.",
     );
+    expect(await database.db.select().from(users)).toHaveLength(0);
+  });
+});
+
+// El script real, con la entrada por tubería (por ejemplo, desde otro programa).
+const apiDir = fileURLToPath(new URL("../../", import.meta.url));
+
+function runCreateAdmin(input: string) {
+  return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+    const child = execFile(
+      "node_modules/.bin/tsx",
+      ["src/db/create-admin.ts"],
+      { cwd: apiDir, env: { ...process.env, DATABASE_URL: testDatabaseUrl() } },
+      (_error, stdout, stderr) => resolve({ code: child.exitCode, stdout, stderr }),
+    );
+    child.stdin?.end(input);
+  });
+}
+
+describe("pnpm db:create-admin por tubería", () => {
+  it("lee las cuatro respuestas aunque lleguen todas juntas", async () => {
+    const result = await runCreateAdmin(
+      "Caro Restrepo\n310 555 1234\nclave-de-caro\nclave-de-caro\n",
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Cuenta admin lista: Caro Restrepo (+573105551234).");
+    expect(result.stdout).not.toContain("clave-de-caro");
+    expect(result.code).toBe(0);
+    const [user] = await database.db.select().from(users);
+    expect(user).toMatchObject({ phone: "+573105551234", role: "admin" });
+  });
+
+  it("si la entrada termina antes de tiempo, cancela sin crear la cuenta", async () => {
+    const result = await runCreateAdmin("Caro Restrepo\n310 555 1234\n");
+
+    expect(result.stderr).toContain("Cancelado: no se creó ninguna cuenta.");
+    expect(result.code).toBe(1);
     expect(await database.db.select().from(users)).toHaveLength(0);
   });
 });

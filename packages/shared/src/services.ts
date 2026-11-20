@@ -51,16 +51,28 @@ const serviceFields = {
     ),
 };
 
-export const serviceInputSchema = z.object(serviceFields);
+// Un campo que no existe se rechaza en vez de descartarlo sin avisar: quien manda
+// `active` o `sortOrder` al crear sabe que no se aplicaron.
+const onlyKnownFields = {
+  error: (issue: { code: string; keys?: string[] }) =>
+    issue.code === "unrecognized_keys"
+      ? `No se aceptan estos campos: ${issue.keys?.join(", ")}.`
+      : undefined,
+};
+
+export const serviceInputSchema = z.strictObject(serviceFields, onlyKnownFields);
 
 // Editar cambia solo lo que llega; activar y desactivar también es una edición.
 export const serviceUpdateSchema = z
-  .object({
-    name: serviceFields.name.optional(),
-    priceCop: serviceFields.priceCop.optional(),
-    durationMinutes: serviceFields.durationMinutes.optional(),
-    active: z.boolean("Indica si el servicio está activo.").optional(),
-  })
+  .strictObject(
+    {
+      name: serviceFields.name.optional(),
+      priceCop: serviceFields.priceCop.optional(),
+      durationMinutes: serviceFields.durationMinutes.optional(),
+      active: z.boolean("Indica si el servicio está activo.").optional(),
+    },
+    onlyKnownFields,
+  )
   .refine((update) => Object.values(update).some((value) => value !== undefined), {
     message: "No hay cambios para guardar.",
   });
