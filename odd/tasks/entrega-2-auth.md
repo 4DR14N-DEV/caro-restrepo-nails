@@ -28,7 +28,7 @@ Rama: `feat/entrega-2-auth` · Estrategia de entrega: ask-on-risk · Runner de t
 | T7  | S10 f–h        | inline | hecho  | e07cf00          |
 | T8  | S10 e, i       | inline | hecho  | 83b5650          |
 | T9  | S11 a–c        | inline | hecho  | d353089 (+ L22)  |
-| T10 | S3 (L26–L27)   | inline | hecho  | ver L27          |
+| T10 | S3 (L26–L28)   | inline | hecho  | e6805d5          |
 
 Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), así que no hay trigger de writer. Riesgo: ítem 2 (autenticación) en T3/T4 e ítem 5 (dependencia nativa y deploy) en T3: verificador independiente al final de la entrega.
 
@@ -61,3 +61,4 @@ Ruta: todo inline; las unidades dependen entre sí (T1 → T2/T3 → T4/T5), as�
 - L25 (2026-11-18, usuario): "sí, súbela y abre el PR." Entrega en un solo PR (excepción de tamaño: la rama ya está cerrada y revisada por partes).
 - L26 (2026-11-20, usuario): "fui al preview en netlify de la rama auth entrega2, intente crear cuenta y error, intente ingresar con la cuenta de caro y error. Decia algo salió mal"
 - L27: Causa (pendiente de L9 confirmada): en el deploy preview la función se cae al cargar con "Cannot find native binding" de `@node-rs/argon2`; con pnpm el binario vive en el paquete hermano `@node-rs/argon2-linux-x64-gnu`, que Netlify no copia. RED reproducido con `@netlify/zip-it-and-ship-it` en local (mismo error). Arreglo T10: `@node-rs/argon2-linux-x64-gnu@2.2.2` como `optionalDependencies` de `@caro/api` y en `external_node_modules`. GREEN: el bundle trae ambos paquetes, `/api/health` responde 200 vía el handler y Argon2 genera `$argon2id$`; `pnpm --filter @caro/api test` 9/9. Si se actualiza `@node-rs/argon2`, actualizar el binario a la misma versión. Pendiente: confirmar en el preview tras subir la rama.
+- L28 (2026-11-20): Deploy preview #2 con e6805d5, verificado por el usuario: `/api/health` → `{"status":"ok"}`; crear cuenta e ingresar funcionan; migración aplicada en Supabase y cuenta admin de Caro creada. Prueba de cabecera (R1-001, L18): 21 ingresos con `x-nf-client-connection-ip` falsa distinta y celulares distintos → 1–20 `401`, 21 `429`: Netlify ignora la cabecera del cliente y limita por la IP real. Pendientes de L9, L18 y L19 cerrados. Siguiente: mergear el PR #2.
