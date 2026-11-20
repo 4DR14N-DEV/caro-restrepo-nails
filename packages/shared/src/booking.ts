@@ -70,3 +70,74 @@ export interface BookingResult {
   // Teléfono de Caro en formato E.164 para el enlace de WhatsApp; null si no hay cuenta admin.
   caroWhatsapp: string | null;
 }
+
+// Días y horas escritos igual en todos lados, sin depender del idioma del navegador.
+const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MONTHS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+function dateParts(date: string) {
+  const [year = 0, month = 1, day = 1] = date.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return { weekday: WEEKDAYS[weekday] ?? "", day, month: MONTHS[month - 1] ?? "" };
+}
+
+// "2026-11-23" → "lunes 23 de noviembre"
+export function formatDay(date: string): string {
+  const { weekday, day, month } = dateParts(date);
+  return `${weekday} ${day} de ${month}`;
+}
+
+// "2026-11-23" → "lun 23 nov"
+export function formatDayShort(date: string): string {
+  const { weekday, day, month } = dateParts(date);
+  return `${weekday.slice(0, 3)} ${day} ${month.slice(0, 3)}`;
+}
+
+// "14:30" → "2:30 p. m."
+export function formatTime(time: string): string {
+  const [hours = 0, minutes = 0] = time.split(":").map(Number);
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "a. m." : "p. m."}`;
+}
+
+// ["A", "B", "C"] → "A, B y C"
+function joinNames(names: readonly string[]): string {
+  return names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} y ${names.at(-1)}`;
+}
+
+// "lunes 23 de noviembre a las 10:00 a. m."; con la una se dice "a la".
+export function formatWhen(date: string, time: string): string {
+  const hour = formatTime(time);
+  return `${formatDay(date)} ${hour.startsWith("1:") ? "a la" : "a las"} ${hour}`;
+}
+
+// Texto para avisar a Caro: "Hola Caro, soy {nombre}. Reservé {servicios} el {día} a las {hora}."
+// La hora termina en "a. m." o "p. m.": ese punto cierra la oración, sin agregar otro.
+export function bookingMessage(booking: {
+  name: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+}): string {
+  return `Hola Caro, soy ${booking.name}. Reservé ${joinNames(booking.services)} el ${formatWhen(booking.date, booking.time)}`;
+}
+
+// Enlace de WhatsApp con el mensaje ya escrito. El número va sin "+".
+export function whatsappLink(phone: string, text: string): string {
+  return `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent(text)}`;
+}

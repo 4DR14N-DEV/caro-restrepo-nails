@@ -15,7 +15,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     </div>
     <RegisterForm client:load />
     <p class="text-center text-sm text-neutral-600">
-      ¿Ya tienes cuenta? <a href="/ingreso" class="font-medium underline">Ingresa</a>
+      ¿Ya tienes cuenta? <a href="/ingreso" data-keep-next class="font-medium underline">Ingresa</a>
     </p>
   </main>
 </BaseLayout>
+
+<script>
+  // Si se llegó con ?next=... (por ejemplo, desde /reservar), el enlace a la otra página lo
+  // conserva. El formulario vuelve a validar que sea una ruta interna.
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next) {
+    for (const link of document.querySelectorAll<HTMLAnchorElement>("a[data-keep-next]")) {
+      link.search = new URLSearchParams({ next }).toString();
+    }
+  }
+</script>
