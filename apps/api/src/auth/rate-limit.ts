@@ -104,17 +104,17 @@ export async function claimAttempt(
 
   const [row] = await db
     .insert(rateLimits)
-    .values({ key, failedCount: 1, windowStartedAt: sql`now()` })
+    .values({ key, attemptCount: 1, windowStartedAt: sql`now()` })
     .onConflictDoUpdate({
       target: rateLimits.key,
       set: {
         // Durante un bloqueo no se cuenta nada; si la ventana venció, empieza otra.
-        failedCount: sql`CASE WHEN ${locked} THEN ${rateLimits.failedCount} WHEN ${windowExpired} THEN 1 ELSE ${rateLimits.failedCount} + 1 END`,
+        attemptCount: sql`CASE WHEN ${locked} THEN ${rateLimits.attemptCount} WHEN ${windowExpired} THEN 1 ELSE ${rateLimits.attemptCount} + 1 END`,
         windowStartedAt: sql`CASE WHEN ${locked} OR NOT ${windowExpired} THEN ${rateLimits.windowStartedAt} ELSE now() END`,
       },
     })
     .returning({
-      attempts: rateLimits.failedCount,
+      attempts: rateLimits.attemptCount,
       lockedSeconds: sql<
         number | null
       >`ceil(extract(epoch from ${rateLimits.lockedUntil} - now()))::int`,
@@ -131,7 +131,7 @@ export async function claimAttempt(
 
 // Tras un fallo: si ya se agotaron los intentos de la ventana, bloquea la clave.
 export async function lockIfExhausted(db: Database, limit: Limit, key: string): Promise<void> {
-  await lock(db, limit, key, sql`${rateLimits.failedCount} >= ${limit.max}`);
+  await lock(db, limit, key, sql`${rateLimits.attemptCount} >= ${limit.max}`);
 }
 
 // Bloquea la clave y reinicia el conteo, salvo que ya esté bloqueada.
@@ -139,7 +139,7 @@ async function lock(db: Database, limit: Limit, key: string, condition: SQL): Pr
   await db
     .update(rateLimits)
     .set({
-      failedCount: 0,
+      attemptCount: 0,
       windowStartedAt: sql`now()`,
       lockedUntil: sql`now() + ${interval(limit.lockSeconds)}`,
     })
@@ -153,7 +153,7 @@ async function lock(db: Database, limit: Limit, key: string, condition: SQL): Pr
 export async function releaseAttempt(db: Database, key: string): Promise<void> {
   await db
     .update(rateLimits)
-    .set({ failedCount: sql`greatest(${rateLimits.failedCount} - 1, 0)` })
+    .set({ attemptCount: sql`greatest(${rateLimits.attemptCount} - 1, 0)` })
     .where(eq(rateLimits.key, key));
 }
 

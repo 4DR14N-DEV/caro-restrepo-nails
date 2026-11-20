@@ -83,11 +83,11 @@ export const rateLimits = pgTable(
   {
     key: text("key").primaryKey(),
     // Intentos fallidos más intentos en curso dentro de la ventana.
-    failedCount: integer("failed_count").notNull().default(0),
+    attemptCount: integer("attempt_count").notNull().default(0),
     windowStartedAt: timestamptz("window_started_at").notNull(),
     lockedUntil: timestamptz("locked_until"),
   },
-  (t) => [check("rate_limits_failed_count", sql`${t.failedCount} >= 0`)],
+  (t) => [check("rate_limits_attempt_count", sql`${t.attemptCount} >= 0`)],
 );
 
 export const services = pgTable(
