@@ -30,11 +30,15 @@ async function askHidden(question: string): Promise<string> {
 }
 
 // Ctrl+D (o una entrada que termina antes de tiempo) cierra el prompt: se cancela con un
-// mensaje en vez de mostrar el error interno o quedarse esperando.
+// mensaje en vez de mostrar el error interno o quedarse esperando. Un solo aviso de cierre
+// sirve para todas las preguntas.
 let closed = false;
-prompt.on("close", () => {
-  closed = true;
-});
+const closedPrompt = new Promise<null>((resolve) =>
+  prompt.once("close", () => {
+    closed = true;
+    resolve(null);
+  }),
+);
 
 function cancel(): never {
   muted = false;
@@ -42,12 +46,13 @@ function cancel(): never {
   process.exit(1);
 }
 
+// Solo el cierre de la entrada cancela; cualquier otro error se muestra tal cual.
 async function ask(question: () => Promise<string>): Promise<string> {
   if (closed) cancel();
-  const answer = await Promise.race([
-    question(),
-    new Promise<null>((resolve) => prompt.once("close", () => resolve(null))),
-  ]).catch(() => null);
+  const answer = await Promise.race([question(), closedPrompt]).catch((error: unknown) => {
+    if (closed) return null;
+    throw error;
+  });
   return answer ?? cancel();
 }
 

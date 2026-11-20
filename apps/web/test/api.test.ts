@@ -81,20 +81,34 @@ describe("formErrorMessage", () => {
     expect(formErrorMessage({ ...blocked, retryAfterSeconds: 30 })).toBe(
       "Demasiados intentos. Vuelve a intentarlo en 1 minuto.",
     );
-    expect(formErrorMessage(blocked)).toBe(
-      "Demasiados intentos. Vuelve a intentarlo en 15 minutos.",
+  });
+
+  // El registro bloquea 1 hora y el ingreso 15 minutos: sin la cabecera no se adivina.
+  it("sin la espera del servidor no inventa una duración", () => {
+    expect(formErrorMessage({ ok: false, status: 429, error: "too_many_attempts" })).toBe(
+      "Demasiados intentos. Vuelve a intentarlo más tarde.",
     );
   });
 
   it("muestra horas cuando la espera es de una hora o más", () => {
-    expect(
-      formErrorMessage({
-        ok: false,
-        status: 429,
-        error: "too_many_attempts",
-        retryAfterSeconds: 3600,
-      }),
-    ).toBe("Demasiados intentos. Vuelve a intentarlo en 1 hora.");
+    const blocked = { ok: false as const, status: 429, error: "too_many_attempts" };
+    expect(formErrorMessage({ ...blocked, retryAfterSeconds: 3600 })).toBe(
+      "Demasiados intentos. Vuelve a intentarlo en 1 hora.",
+    );
+    expect(formErrorMessage({ ...blocked, retryAfterSeconds: 7200 })).toBe(
+      "Demasiados intentos. Vuelve a intentarlo en 2 horas.",
+    );
+  });
+
+  // Regresión: entre 3541 y 3599 segundos se redondeaba a "60 minutos".
+  it("una espera que redondea a 60 minutos se muestra como 1 hora", () => {
+    const blocked = { ok: false as const, status: 429, error: "too_many_attempts" };
+    expect(formErrorMessage({ ...blocked, retryAfterSeconds: 3541 })).toBe(
+      "Demasiados intentos. Vuelve a intentarlo en 1 hora.",
+    );
+    expect(formErrorMessage({ ...blocked, retryAfterSeconds: 3540 })).toBe(
+      "Demasiados intentos. Vuelve a intentarlo en 59 minutos.",
+    );
   });
 
   it("tiene mensajes para la red y para errores desconocidos", () => {

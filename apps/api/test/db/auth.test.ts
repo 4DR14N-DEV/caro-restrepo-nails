@@ -432,6 +432,59 @@ describe("límites por IP y limpieza", () => {
     }
   });
 
+  // Regresión: con la contraseña correcta, un error al limpiar los intentos dejaba
+  // contados el del teléfono y el de la IP.
+  it("un error del servidor después de un ingreso correcto no cuenta como intento", async () => {
+    await register();
+    await database.pool.query(`
+      CREATE FUNCTION fail_clear() RETURNS trigger AS $$
+      BEGIN
+        IF OLD.key LIKE 'login-phone:%' THEN RAISE EXCEPTION 'falla simulada al limpiar'; END IF;
+        RETURN OLD;
+      END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_clear BEFORE DELETE ON rate_limits
+        FOR EACH ROW EXECUTE FUNCTION fail_clear();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await login("secreta123")).status).toBe(500);
+      expect((await throttleRow())?.failedCount ?? 0).toBe(0);
+      expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_clear ON rate_limits;
+        DROP FUNCTION fail_clear();
+      `);
+    }
+  });
+
+  it("un error al crear la sesión tampoco cuenta como intento", async () => {
+    await register();
+    await database.pool.query(`
+      CREATE FUNCTION fail_session() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'falla simulada de la sesión'; END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_session BEFORE INSERT ON sessions
+        FOR EACH ROW EXECUTE FUNCTION fail_session();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await login("secreta123")).status).toBe(500);
+      expect((await throttleRow())?.failedCount ?? 0).toBe(0);
+      expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_session ON sessions;
+        DROP FUNCTION fail_session();
+      `);
+    }
+  });
+
   it("borra las filas de límites vencidas", async () => {
     await database.db.insert(rateLimits).values([
       {

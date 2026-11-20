@@ -183,14 +183,23 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
       return;
     }
 
-    // Un acierto borra los fallos del teléfono y no suma al conteo de la IP.
-    await clearAttempts(db, phoneKey);
-    if (ipKey) await releaseAttempt(db, ipKey);
-    // La sesión anterior de este navegador (si la había) se reemplaza por la nueva.
-    const previousToken = readSessionCookie(req);
-    if (previousToken) await deleteSession(db, previousToken);
-    await deleteExpiredSessions(db, user.id);
-    setSessionCookie(res, await createSession(db, user.id));
+    let token: string;
+    try {
+      // Un acierto borra los fallos del teléfono y no suma al conteo de la IP.
+      await clearAttempts(db, phoneKey);
+      pending.delete(phoneKey);
+      if (ipKey) await release(ipKey);
+      // La sesión anterior de este navegador (si la había) se reemplaza por la nueva.
+      const previousToken = readSessionCookie(req);
+      if (previousToken) await deleteSession(db, previousToken);
+      await deleteExpiredSessions(db, user.id);
+      token = await createSession(db, user.id);
+    } catch (error) {
+      await Promise.allSettled([...pending].map(release));
+      throw error;
+    }
+
+    setSessionCookie(res, token);
     res.json({ user: toPublicUser({ ...user, phone: user.phone }) });
   });
 

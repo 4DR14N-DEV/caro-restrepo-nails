@@ -55,7 +55,10 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
     case "invalid_credentials":
       return "Celular o contraseña incorrectos.";
     case "too_many_attempts":
-      return `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds ?? 900)}.`;
+      // Cada límite bloquea por un tiempo distinto: sin la espera del servidor no se adivina.
+      return result.retryAfterSeconds === undefined
+        ? "Demasiados intentos. Vuelve a intentarlo más tarde."
+        : `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds)}.`;
     case "network":
       return "No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.";
     default:
@@ -63,13 +66,13 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
   }
 }
 
-// Espera legible: en horas si es de una hora o más, si no en minutos (redondeando hacia arriba).
+// Espera legible en minutos (redondeando hacia arriba), o en horas si llega a 60 minutos.
 function waitTime(seconds: number): string {
-  if (seconds >= 3600) {
-    const hours = Math.ceil(seconds / 3600);
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes >= 60) {
+    const hours = Math.ceil(minutes / 60);
     return `${hours} ${hours === 1 ? "hora" : "horas"}`;
   }
-  const minutes = Math.ceil(seconds / 60);
   return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
 }
 
