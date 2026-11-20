@@ -3,12 +3,13 @@ import { eq } from "drizzle-orm";
 import { Router, type Request, type Response } from "express";
 import type { Database } from "../db/client.js";
 import { users } from "../db/schema.js";
+import { invalidInput } from "../http.js";
+import { clearSessionCookie, readSessionCookie, setSessionCookie } from "./cookies.js";
 import { hashPassword, verifyAgainstDummy, verifyPassword } from "./password.js";
 import {
   createSession,
   deleteExpiredSessions,
   deleteSession,
-  SESSION_DAYS,
   validateSession,
 } from "./sessions.js";
 import {
@@ -23,42 +24,6 @@ import {
   registerIpLimit,
   releaseAttempt,
 } from "./rate-limit.js";
-
-const COOKIE_NAME = "session";
-
-// httpOnly: el JavaScript de la página no puede leerla. SameSite=Lax: otros sitios no
-// pueden enviarla en un POST, lo que protege de CSRF.
-const cookieOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "lax",
-  path: "/",
-} as const;
-
-function setSessionCookie(res: Response, token: string): void {
-  res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000 });
-}
-
-function readSessionCookie(req: Request): string | undefined {
-  for (const part of req.headers.cookie?.split(";") ?? []) {
-    const [name, ...value] = part.trim().split("=");
-    if (name === COOKIE_NAME) return value.join("=") || undefined;
-  }
-  return undefined;
-}
-
-// Primer mensaje de error por campo, listo para mostrar en el formulario.
-function invalidInput(
-  res: Response,
-  error: { issues: { path: PropertyKey[]; message: string }[] },
-): void {
-  const fields: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const field = String(issue.path[0] ?? "form");
-    fields[field] ??= issue.message;
-  }
-  res.status(400).json({ error: "invalid_input", fields });
-}
 
 function toPublicUser(user: { id: string; name: string; phone: string; role: PublicUser["role"] }) {
   return { id: user.id, name: user.name, phone: user.phone, role: user.role } satisfies PublicUser;
@@ -206,7 +171,7 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
   router.post("/logout", async (req, res) => {
     const token = readSessionCookie(req);
     if (token) await deleteSession(db, token);
-    res.clearCookie(COOKIE_NAME, cookieOptions);
+    clearSessionCookie(res);
     res.status(204).end();
   });
 
