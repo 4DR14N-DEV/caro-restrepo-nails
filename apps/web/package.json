@@ -6,10 +6,12 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.9",
+    "@caro/shared": "workspace:*",
     "@tailwindcss/vite": "^4.3.5",
     "astro": "^7.4.12",
     "react": "^19.3.1",
@@ -20,6 +22,7 @@
     "@astrojs/check": "^0.9.12",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
   }
 }

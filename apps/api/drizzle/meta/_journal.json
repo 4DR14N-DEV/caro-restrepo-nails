@@ -15,6 +15,13 @@
       "when": 1794976798423,
       "tag": "0001_appointments_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795045780685,
+      "tag": "0002_rate_limits",
+      "breakpoints": true
     }
   ]
 }

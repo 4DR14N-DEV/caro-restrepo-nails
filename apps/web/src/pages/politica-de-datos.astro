@@ -1,0 +1,80 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+// Borrador pendiente de revisión por Caro.
+// Canal para que las clientas ejerzan sus derechos: el WhatsApp de Caro.
+const whatsappNumber = "+57 300 744 5676";
+const whatsappUrl = "https://wa.me/573007445676";
+const updatedAt = "18 de noviembre de 2026";
+---
+
+<BaseLayout
+  title="Política de tratamiento de datos · Caro Restrepo Nails"
+  description="Cómo Caro Restrepo Nails trata tus datos personales (Ley 1581 de 2012)."
+>
+  <main class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 leading-relaxed">
+    <a href="/" class="text-sm text-neutral-600 underline">← Volver al inicio</a>
+    <h1 class="text-2xl font-semibold tracking-tight">Política de tratamiento de datos personales</h1>
+    <p class="text-sm text-neutral-500">Última actualización: {updatedAt}</p>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Quién es responsable de tus datos</h2>
+      <p>
+        Caro Restrepo Nails es responsable del tratamiento de tus datos personales, de acuerdo con la
+        Ley 1581 de 2012 y el Decreto 1377 de 2013. Contacto: WhatsApp
+        <a href={whatsappUrl} class="font-medium underline">{whatsappNumber}</a>.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Qué datos recogemos</h2>
+      <p>
+        Solo tu nombre, tu número de celular y las citas que reservas. Tu contraseña se guarda cifrada:
+        nadie puede leerla, ni siquiera Caro.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Para qué los usamos</h2>
+      <ul class="list-disc pl-5">
+        <li>Crear tu cuenta y permitirte ingresar.</li>
+        <li>Agendar, cambiar y cancelar tus citas.</li>
+        <li>Recordarte tus citas y comunicarnos contigo por WhatsApp sobre ellas.</li>
+      </ul>
+      <p>No vendemos ni compartimos tus datos con terceros para publicidad.</p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Tus derechos</h2>
+      <p>Como titular de los datos puedes:</p>
+      <ul class="list-disc pl-5">
+        <li>Conocer, actualizar y corregir tus datos.</li>
+        <li>Pedir prueba de la autorización que nos diste.</li>
+        <li>Saber cómo hemos usado tus datos.</li>
+        <li>Revocar la autorización y pedir que borremos tus datos.</li>
+        <li>Presentar quejas ante la Superintendencia de Industria y Comercio.</li>
+      </ul>
+      <p>
+        Puedes borrar tu cuenta cuando quieras. Al hacerlo, eliminamos tu nombre y tu celular, y
+        conservamos solo el registro anónimo de las citas pasadas.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Cómo ejercer tus derechos</h2>
+      <p>
+        Escríbenos por WhatsApp al
+        <a href={whatsappUrl} class="font-medium underline">{whatsappNumber}</a>. Respondemos consultas en máximo 10 días hábiles y reclamos en máximo 15
+        días hábiles, como indica la ley.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-semibold">Vigencia</h2>
+      <p>
+        Esta política rige desde su publicación. Guardamos tus datos mientras tengas una cuenta activa.
+        Si la cambiamos, te lo avisaremos en este sitio.
+      </p>
+    </section>
+  </main>
+</BaseLayout>

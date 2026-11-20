@@ -8,5 +8,12 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    // En desarrollo, /api va a la API local (pnpm --filter @caro/api dev), igual que en
+    // Netlify: mismo origen, así la cookie de sesión funciona sin CORS.
+    server: {
+      proxy: {
+        "/api": "http://localhost:3000",
+      },
+    },
   },
 });

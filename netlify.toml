@@ -9,6 +9,10 @@
 [functions]
   directory = "apps/api/netlify/functions"
   node_bundler = "esbuild"
+  # Argon2 es un binario nativo: esbuild no puede empaquetarlo, se copia tal cual.
+  # El binario vive en un paquete aparte por plataforma; Netlify no lo copia solo,
+  # por eso va explícito (y como optionalDependency de @caro/api, misma versión).
+  external_node_modules = ["@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu"]
 
 # Todas las rutas /api/* las atiende la función de Express.
 [[redirects]]
