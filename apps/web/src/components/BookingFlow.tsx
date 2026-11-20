@@ -76,6 +76,8 @@ export function BookingFlow() {
   // En el orden del catálogo, que es el que la clienta ve.
   const chosen =
     load.state === "ready" ? load.services.filter((service) => selected.has(service.id)) : [];
+  // Como texto, para que el efecto de las horas dependa de un valor estable y no de un
+  // arreglo nuevo en cada render.
   const chosenIds = chosen.map((service) => service.id).join(",");
 
   useEffect(() => {
@@ -88,6 +90,10 @@ export function BookingFlow() {
     setTimes({ state: "loading" });
     void api.bookingTimes(date, chosenIds.split(",")).then((result) => {
       if (!current) return;
+      if (!result.ok && result.error === "service_unavailable") {
+        setTimes({ state: "idle" });
+        return serviceGone(result.fields?.services);
+      }
       setTimes(
         result.ok
           ? { state: "ready", times: result.data.times }
@@ -98,6 +104,15 @@ export function BookingFlow() {
       current = false;
     };
   }, [date, chosenIds, timesRequest]);
+
+  // Caro desactivó un servicio mientras tanto (al pedir las horas o al confirmar): se
+  // recarga el catálogo y la clienta vuelve a elegir, en vez de reintentar lo mismo.
+  function serviceGone(text: string | undefined) {
+    setNotice({ text: text ?? serviceUnavailableMessage, at: "services" });
+    setSelected(new Set());
+    setTime(undefined);
+    void fetchAll();
+  }
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -129,10 +144,7 @@ export function BookingFlow() {
       setNotice({ text: result.fields?.time ?? slotTakenMessage, at: "times" });
       setTimesRequest((count) => count + 1);
     } else if (result.error === "service_unavailable") {
-      // Caro desactivó un servicio mientras tanto: se recarga el catálogo y se vuelve a elegir.
-      setNotice({ text: result.fields?.services ?? serviceUnavailableMessage, at: "services" });
-      setSelected(new Set());
-      void fetchAll();
+      serviceGone(result.fields?.services);
     } else {
       setNotice({ text: formErrorMessage(result), at: "times" });
     }

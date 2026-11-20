@@ -187,6 +187,26 @@ describe("BookingFlow", () => {
     );
   });
 
+  it("si un servicio se desactiva mientras elige el día, lo avisa y recarga el catálogo", async () => {
+    const message = "Alguno de los servicios ya no está disponible. Vuelve a elegirlos.";
+    mockApi({
+      ...signedIn,
+      "GET /api/services": [
+        () => json(200, { services: catalog }),
+        () => json(200, { services: catalog.filter((service) => service.id !== "s3") }),
+      ],
+      "GET /api/booking/times": () =>
+        json(409, { error: "service_unavailable", fields: { services: message } }),
+    });
+    render(<BookingFlow />);
+
+    await pickServicesAndDay();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(message);
+    await vi.waitFor(() => expect(screen.queryByRole("checkbox", { name: /Retiro/ })).toBeNull());
+    expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+  });
+
   it("un día sin horas libres lo dice", async () => {
     mockApi({ ...signedIn, "GET /api/booking/times": () => json(200, { times: [] }) });
     render(<BookingFlow />);

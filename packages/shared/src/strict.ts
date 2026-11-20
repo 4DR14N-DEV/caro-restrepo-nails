@@ -1,5 +1,5 @@
 // Un campo que no existe se rechaza en vez de descartarlo sin avisar: quien manda
-// `active` o `sortOrder` al crear un servicio sabe que no se aplicaron.
+// `active` al crear un servicio, o `clientId` al reservar, sabe que no se aplicó.
 // Se usa como opciones de `z.strictObject`.
 export const onlyKnownFields = {
   error: (issue: { code: string; keys?: string[] }) =>

@@ -55,6 +55,22 @@ async function serviceId(name: string): Promise<string> {
   return service.id;
 }
 
+// Espera a que el guardado de la API quede bloqueado por una cita sin confirmar de otra
+// conexión. Con un tope: si nunca se bloquea, falla con un mensaje claro en vez de colgarse.
+async function waitForBlockedInsert() {
+  let blocked = false;
+  for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
+    const { rows } = await database.pool.query(
+      `SELECT count(*)::int AS n FROM pg_stat_activity
+       WHERE wait_event_type = 'Lock' AND datname = current_database()
+         AND query ILIKE 'insert into "appointments"%'`,
+    );
+    blocked = rows[0].n > 0;
+    if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
+}
+
 const book = (cookie: string, body: object) =>
   request(app).post("/api/appointments").set("Cookie", cookie).send(body);
 
@@ -216,19 +232,7 @@ describe("POST /api/appointments", () => {
         (response) => response,
       );
       // Espera a que el guardado de Ana esté bloqueado por la cita sin confirmar.
-      // Con un tope: si el guardado nunca se bloquea, el test falla con un mensaje claro
-      // en vez de quedarse esperando.
-      let blocked = false;
-      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
-        const { rows } = await database.pool.query(
-          `SELECT count(*)::int AS n FROM pg_stat_activity
-           WHERE wait_event_type = 'Lock' AND datname = current_database()
-             AND query ILIKE 'insert into "appointments"%'`,
-        );
-        blocked = rows[0].n > 0;
-        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
+      await waitForBlockedInsert();
       await other.query("COMMIT");
 
       const response = await pending;
@@ -259,17 +263,7 @@ describe("POST /api/appointments", () => {
       const pending = book(ana.cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" }).then(
         (response) => response,
       );
-      let blocked = false;
-      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
-        const { rows } = await database.pool.query(
-          `SELECT count(*)::int AS n FROM pg_stat_activity
-           WHERE wait_event_type = 'Lock' AND datname = current_database()
-             AND query ILIKE 'insert into "appointments"%'`,
-        );
-        blocked = rows[0].n > 0;
-        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
+      await waitForBlockedInsert();
       // Pisa la cita de Ana (10:00–11:10): cada transacción espera a la otra y Postgres
       // corta una de las dos (interbloqueo).
       await insert("2026-11-23T16:00:00Z", "2026-11-23T16:05:00Z").catch(() => undefined);
