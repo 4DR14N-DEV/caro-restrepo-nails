@@ -1,5 +1,5 @@
 import { loginSchema } from "@caro/shared";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { api, formErrorMessage } from "../lib/api";
 import { fieldErrors } from "../lib/forms";
 import { FormShell } from "./FormShell";
@@ -10,7 +10,7 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const parsed = loginSchema.safeParse({

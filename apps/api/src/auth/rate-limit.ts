@@ -8,8 +8,7 @@ export interface Limit {
   kind: string;
   // Intentos permitidos dentro de la ventana.
   max: number;
-  window: SQL;
-  lock: SQL;
+  windowSeconds: number;
   lockSeconds: number;
 }
 
@@ -17,8 +16,7 @@ export interface Limit {
 export const loginPhoneLimit: Limit = {
   kind: "login-phone",
   max: 5,
-  window: sql`interval '15 minutes'`,
-  lock: sql`interval '15 minutes'`,
+  windowSeconds: 15 * 60,
   lockSeconds: 15 * 60,
 };
 
@@ -27,8 +25,7 @@ export const loginPhoneLimit: Limit = {
 export const loginIpLimit: Limit = {
   kind: "login-ip",
   max: 20,
-  window: sql`interval '15 minutes'`,
-  lock: sql`interval '15 minutes'`,
+  windowSeconds: 15 * 60,
   lockSeconds: 15 * 60,
 };
 
@@ -37,13 +34,18 @@ export const loginIpLimit: Limit = {
 export const registerIpLimit: Limit = {
   kind: "register-ip",
   max: 5,
-  window: sql`interval '1 hour'`,
-  lock: sql`interval '1 hour'`,
+  windowSeconds: 60 * 60,
   lockSeconds: 60 * 60,
 };
 
 // Ventana más larga de todos los límites: las filas que la superan ya no sirven.
-const LONGEST_WINDOW = sql`interval '1 hour'`;
+const longestWindowSeconds = Math.max(
+  ...[loginPhoneLimit, loginIpLimit, registerIpLimit].map((limit) => limit.windowSeconds),
+);
+
+function interval(seconds: number): SQL {
+  return sql`make_interval(secs => ${seconds})`;
+}
 
 export function limitKey(limit: Limit, value: string): string {
   return `${limit.kind}:${value}`;
@@ -98,21 +100,21 @@ export async function claimAttempt(
   key: string,
 ): Promise<number | null> {
   const locked = sql`${rateLimits.lockedUntil} > now()`;
-  const windowExpired = sql`${rateLimits.windowStartedAt} <= now() - ${limit.window}`;
+  const windowExpired = sql`${rateLimits.windowStartedAt} <= now() - ${interval(limit.windowSeconds)}`;
 
   const [row] = await db
     .insert(rateLimits)
-    .values({ key, failedCount: 1, windowStartedAt: sql`now()` })
+    .values({ key, attemptCount: 1, windowStartedAt: sql`now()` })
     .onConflictDoUpdate({
       target: rateLimits.key,
       set: {
         // Durante un bloqueo no se cuenta nada; si la ventana venció, empieza otra.
-        failedCount: sql`CASE WHEN ${locked} THEN ${rateLimits.failedCount} WHEN ${windowExpired} THEN 1 ELSE ${rateLimits.failedCount} + 1 END`,
+        attemptCount: sql`CASE WHEN ${locked} THEN ${rateLimits.attemptCount} WHEN ${windowExpired} THEN 1 ELSE ${rateLimits.attemptCount} + 1 END`,
         windowStartedAt: sql`CASE WHEN ${locked} OR NOT ${windowExpired} THEN ${rateLimits.windowStartedAt} ELSE now() END`,
       },
     })
     .returning({
-      attempts: rateLimits.failedCount,
+      attempts: rateLimits.attemptCount,
       lockedSeconds: sql<
         number | null
       >`ceil(extract(epoch from ${rateLimits.lockedUntil} - now()))::int`,
@@ -129,14 +131,18 @@ export async function claimAttempt(
 
 // Tras un fallo: si ya se agotaron los intentos de la ventana, bloquea la clave.
 export async function lockIfExhausted(db: Database, limit: Limit, key: string): Promise<void> {
-  await lock(db, limit, key, sql`${rateLimits.failedCount} >= ${limit.max}`);
+  await lock(db, limit, key, sql`${rateLimits.attemptCount} >= ${limit.max}`);
 }
 
 // Bloquea la clave y reinicia el conteo, salvo que ya esté bloqueada.
 async function lock(db: Database, limit: Limit, key: string, condition: SQL): Promise<void> {
   await db
     .update(rateLimits)
-    .set({ failedCount: 0, windowStartedAt: sql`now()`, lockedUntil: sql`now() + ${limit.lock}` })
+    .set({
+      attemptCount: 0,
+      windowStartedAt: sql`now()`,
+      lockedUntil: sql`now() + ${interval(limit.lockSeconds)}`,
+    })
     .where(
       sql`${rateLimits.key} = ${key} AND (${rateLimits.lockedUntil} IS NULL OR ${rateLimits.lockedUntil} <= now()) AND ${condition}`,
     );
@@ -147,7 +153,7 @@ async function lock(db: Database, limit: Limit, key: string, condition: SQL): Pr
 export async function releaseAttempt(db: Database, key: string): Promise<void> {
   await db
     .update(rateLimits)
-    .set({ failedCount: sql`greatest(${rateLimits.failedCount} - 1, 0)` })
+    .set({ attemptCount: sql`greatest(${rateLimits.attemptCount} - 1, 0)` })
     .where(eq(rateLimits.key, key));
 }
 
@@ -164,7 +170,7 @@ export async function pruneExpired(db: Database): Promise<void> {
     await db
       .delete(rateLimits)
       .where(
-        sql`${rateLimits.windowStartedAt} <= now() - ${LONGEST_WINDOW} AND (${rateLimits.lockedUntil} IS NULL OR ${rateLimits.lockedUntil} <= now())`,
+        sql`${rateLimits.windowStartedAt} <= now() - ${interval(longestWindowSeconds)} AND (${rateLimits.lockedUntil} IS NULL OR ${rateLimits.lockedUntil} <= now())`,
       );
   } catch (error) {
     console.error("No se pudieron borrar los límites vencidos:", error);

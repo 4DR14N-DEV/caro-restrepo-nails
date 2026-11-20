@@ -32,6 +32,14 @@ export function AuthStatus() {
         <p>
           Hola, <span className="font-medium">{user.name}</span>.
         </p>
+        {user.role === "admin" && (
+          <a
+            href="/admin/servicios"
+            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          >
+            Administrar servicios
+          </a>
+        )}
         <button
           type="button"
           onClick={logout}

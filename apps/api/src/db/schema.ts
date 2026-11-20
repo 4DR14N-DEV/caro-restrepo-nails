@@ -12,6 +12,7 @@ import {
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -83,18 +84,19 @@ export const rateLimits = pgTable(
   {
     key: text("key").primaryKey(),
     // Intentos fallidos más intentos en curso dentro de la ventana.
-    failedCount: integer("failed_count").notNull().default(0),
+    attemptCount: integer("attempt_count").notNull().default(0),
     windowStartedAt: timestamptz("window_started_at").notNull(),
     lockedUntil: timestamptz("locked_until"),
   },
-  (t) => [check("rate_limits_failed_count", sql`${t.failedCount} >= 0`)],
+  (t) => [check("rate_limits_attempt_count", sql`${t.attemptCount} >= 0`)],
 );
 
 export const services = pgTable(
   "services",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    name: text("name").notNull().unique(),
+    // Único sin distinguir mayúsculas (índice sobre lower(name), abajo).
+    name: text("name").notNull(),
     // Pesos colombianos como enteros: nunca decimales.
     priceCop: integer("price_cop").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
@@ -104,6 +106,7 @@ export const services = pgTable(
     updatedAt,
   },
   (t) => [
+    uniqueIndex("services_name_lower_unique").on(sql`lower(${t.name})`),
     check("services_price_non_negative", sql`${t.priceCop} >= 0`),
     check("services_duration_positive", sql`${t.durationMinutes} > 0`),
   ],

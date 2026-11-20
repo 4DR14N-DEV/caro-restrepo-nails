@@ -91,4 +91,16 @@ describe("seed", () => {
     expect(await database.db.select().from(businessHours)).toHaveLength(6);
     expect(await database.db.select().from(settings)).toHaveLength(1);
   });
+
+  // Regresión: con la carga por nombre, un servicio que Caro renombró volvía a aparecer.
+  it("no recrea un servicio que Caro renombró", async () => {
+    await database.pool.query("UPDATE services SET name = 'Retiro express' WHERE name = 'Retiro'");
+
+    await seed(database.db);
+
+    const names = (await database.db.select().from(services)).map((service) => service.name);
+    expect(names).toHaveLength(10);
+    expect(names).toContain("Retiro express");
+    expect(names).not.toContain("Retiro");
+  });
 });

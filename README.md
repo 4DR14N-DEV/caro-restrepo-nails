@@ -46,6 +46,15 @@ DATABASE_URL=postgres://caro:caro@localhost:5433/caro pnpm --filter @caro/api de
 pnpm --filter @caro/web dev   # http://127.0.0.1:4321
 ```
 
+## Páginas
+
+| Página             | Quién     | Qué hace                                                                  |
+| ------------------ | --------- | ------------------------------------------------------------------------- |
+| `/servicios`       | Pública   | Catálogo con precio y duración; al elegir varios muestra el total         |
+| `/registro`        | Pública   | Crear cuenta con celular y contraseña                                     |
+| `/ingreso`         | Pública   | Ingresar                                                                  |
+| `/admin/servicios` | Solo Caro | Crear, editar, activar y desactivar servicios (la API responde 401 o 403) |
+
 ## Comandos
 
 | Comando                                   | Qué hace                                                                         |

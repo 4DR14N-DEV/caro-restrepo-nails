@@ -230,7 +230,7 @@ describe("POST /api/auth/login", () => {
   it("no cuenta los fallos de hace más de 15 minutos", async () => {
     await database.db.insert(rateLimits).values({
       key: "login-phone:+573001234567",
-      failedCount: 4,
+      attemptCount: 4,
       windowStartedAt: sql`now() - interval '16 minutes'`,
     });
 
@@ -370,7 +370,7 @@ describe("límites por IP y limpieza", () => {
     for (let attempt = 0; attempt < 25; attempt++) {
       expect((await login("secreta123")).status).toBe(200);
     }
-    expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    expect((await limitRow("login-ip:203.0.113.1"))?.attemptCount ?? 0).toBe(0);
   });
 
   it("5 registros desde una IP la bloquean 1 hora", async () => {
@@ -403,8 +403,8 @@ describe("límites por IP y limpieza", () => {
     const response = await login("secreta123");
 
     expect(response.status).toBe(500);
-    expect((await throttleRow())?.failedCount ?? 0).toBe(0);
-    expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+    expect((await throttleRow())?.attemptCount ?? 0).toBe(0);
+    expect((await limitRow("login-ip:203.0.113.1"))?.attemptCount ?? 0).toBe(0);
   });
 
   // Regresión: si fallaba la reserva del intento por teléfono, el de la IP quedaba contado.
@@ -423,7 +423,7 @@ describe("límites por IP y limpieza", () => {
 
     try {
       expect((await login("secreta123")).status).toBe(500);
-      expect((await limitRow("login-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+      expect((await limitRow("login-ip:203.0.113.1"))?.attemptCount ?? 0).toBe(0);
     } finally {
       await database.pool.query(`
         DROP TRIGGER fail_phone_limit ON rate_limits;
@@ -432,20 +432,78 @@ describe("límites por IP y limpieza", () => {
     }
   });
 
+  // Regresión: con la contraseña correcta, un error al limpiar los intentos dejaba
+  // contados el del teléfono y el de la IP.
+  it("un error del servidor después de un ingreso correcto no cuenta como intento", async () => {
+    await register();
+    // Un fallo previo real: tiene que seguir contado, ni inflado ni descontado.
+    expect((await login("otra-clave")).status).toBe(401);
+    await database.pool.query(`
+      CREATE FUNCTION fail_clear() RETURNS trigger AS $$
+      BEGIN
+        IF OLD.key LIKE 'login-phone:%' THEN RAISE EXCEPTION 'falla simulada al limpiar'; END IF;
+        RETURN OLD;
+      END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_clear BEFORE DELETE ON rate_limits
+        FOR EACH ROW EXECUTE FUNCTION fail_clear();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await login("secreta123")).status).toBe(500);
+      expect((await throttleRow())?.attemptCount).toBe(1);
+      expect((await limitRow("login-ip:203.0.113.1"))?.attemptCount).toBe(1);
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_clear ON rate_limits;
+        DROP FUNCTION fail_clear();
+      `);
+    }
+  });
+
+  it("un error al crear la sesión tampoco cuenta como intento", async () => {
+    await register();
+    expect((await login("otra-clave")).status).toBe(401);
+    await database.pool.query(`
+      CREATE FUNCTION fail_session() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'falla simulada de la sesión'; END
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER fail_session BEFORE INSERT ON sessions
+        FOR EACH ROW EXECUTE FUNCTION fail_session();
+    `);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      expect((await login("secreta123")).status).toBe(500);
+      // La contraseña era correcta: los fallos del teléfono ya se habían borrado.
+      expect(await throttleRow()).toBeUndefined();
+      // El acierto se devolvió una sola vez: queda el fallo previo.
+      expect((await limitRow("login-ip:203.0.113.1"))?.attemptCount).toBe(1);
+    } finally {
+      logged.mockRestore();
+      await database.pool.query(`
+        DROP TRIGGER fail_session ON sessions;
+        DROP FUNCTION fail_session();
+      `);
+    }
+  });
+
   it("borra las filas de límites vencidas", async () => {
     await database.db.insert(rateLimits).values([
       {
         key: "login-phone:+573111111111",
-        failedCount: 3,
+        attemptCount: 3,
         windowStartedAt: sql`now() - interval '2 hours'`,
       },
       {
         key: "login-ip:192.0.2.1",
-        failedCount: 0,
+        attemptCount: 0,
         windowStartedAt: sql`now() - interval '2 hours'`,
         lockedUntil: sql`now() - interval '1 hour'`,
       },
-      { key: "login-phone:+573222222222", failedCount: 3, windowStartedAt: sql`now()` },
+      { key: "login-phone:+573222222222", attemptCount: 3, windowStartedAt: sql`now()` },
     ]);
 
     await login("otra-clave");
@@ -458,7 +516,7 @@ describe("límites por IP y limpieza", () => {
   it("si falla la limpieza, el registro y el ingreso siguen funcionando", async () => {
     await database.db.insert(rateLimits).values({
       key: "login-phone:+573111111111",
-      failedCount: 3,
+      attemptCount: 3,
       windowStartedAt: sql`now() - interval '2 hours'`,
     });
     await database.pool.query(`
@@ -500,7 +558,7 @@ describe("límites por IP y limpieza", () => {
 
     try {
       expect((await register()).status).toBe(500);
-      expect((await limitRow("register-ip:203.0.113.1"))?.failedCount ?? 0).toBe(0);
+      expect((await limitRow("register-ip:203.0.113.1"))?.attemptCount ?? 0).toBe(0);
     } finally {
       logged.mockRestore();
       await database.pool.query(`
@@ -519,7 +577,7 @@ describe("límites por IP y limpieza", () => {
         FOR EACH ROW EXECUTE FUNCTION fail_register();
       CREATE FUNCTION fail_release() RETURNS trigger AS $$
       BEGIN
-        IF NEW.failed_count < OLD.failed_count THEN
+        IF NEW.attempt_count < OLD.attempt_count THEN
           RAISE EXCEPTION 'falla simulada al devolver';
         END IF;
         RETURN NEW;

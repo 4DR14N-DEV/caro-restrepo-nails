@@ -1,4 +1,10 @@
-import type { PublicUser } from "@caro/shared";
+import type {
+  AdminService,
+  PublicService,
+  PublicUser,
+  ServiceData,
+  ServiceUpdate,
+} from "@caro/shared";
 
 // Resultado de una llamada a la API: éxito con datos, o el código de error que devolvió.
 export type ApiResult<T> =
@@ -12,7 +18,7 @@ export type ApiResult<T> =
     };
 
 async function call<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH",
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
@@ -47,6 +53,12 @@ export const api = {
   login: (body: unknown) => call<{ user: PublicUser }>("POST", "/api/auth/login", body),
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
+  services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
+  adminServices: () => call<{ services: AdminService[] }>("GET", "/api/admin/services"),
+  createService: (body: ServiceData) =>
+    call<{ service: AdminService }>("POST", "/api/admin/services", body),
+  updateService: (id: string, body: ServiceUpdate) =>
+    call<{ service: AdminService }>("PATCH", `/api/admin/services/${encodeURIComponent(id)}`, body),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.
@@ -55,7 +67,10 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
     case "invalid_credentials":
       return "Celular o contraseña incorrectos.";
     case "too_many_attempts":
-      return `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds ?? 900)}.`;
+      // Cada límite bloquea por un tiempo distinto: sin la espera del servidor no se adivina.
+      return result.retryAfterSeconds === undefined
+        ? "Demasiados intentos. Vuelve a intentarlo más tarde."
+        : `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds)}.`;
     case "network":
       return "No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.";
     default:
@@ -63,13 +78,13 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
   }
 }
 
-// Espera legible: en horas si es de una hora o más, si no en minutos (redondeando hacia arriba).
+// Espera legible en minutos (redondeando hacia arriba), o en horas si llega a 60 minutos.
 function waitTime(seconds: number): string {
-  if (seconds >= 3600) {
-    const hours = Math.ceil(seconds / 3600);
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes >= 60) {
+    const hours = Math.ceil(minutes / 60);
     return `${hours} ${hours === 1 ? "hora" : "horas"}`;
   }
-  const minutes = Math.ceil(seconds / 60);
   return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
 }
 

@@ -1,7 +1,7 @@
-import type { FormEvent, ReactNode } from "react";
+import type { SubmitEvent, ReactNode } from "react";
 
 interface FormShellProps {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   submitLabel: string;
   submitting: boolean;
   error?: string | undefined;

@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { createAdmin } from "../auth/admin.js";
+import { createAsk } from "./ask.js";
 import { createDatabase } from "./client.js";
 
 // Uso: DATABASE_URL=... pnpm db:create-admin
@@ -29,27 +30,11 @@ async function askHidden(question: string): Promise<string> {
   return answer;
 }
 
-// Ctrl+D (o una entrada que termina antes de tiempo) cierra el prompt: se cancela con un
-// mensaje en vez de mostrar el error interno o quedarse esperando.
-let closed = false;
-prompt.on("close", () => {
-  closed = true;
-});
-
-function cancel(): never {
+const ask = createAsk(prompt, () => {
   muted = false;
   console.error("\nCancelado: no se creó ninguna cuenta.");
   process.exit(1);
-}
-
-async function ask(question: () => Promise<string>): Promise<string> {
-  if (closed) cancel();
-  const answer = await Promise.race([
-    question(),
-    new Promise<null>((resolve) => prompt.once("close", () => resolve(null))),
-  ]).catch(() => null);
-  return answer ?? cancel();
-}
+});
 
 const name = await ask(() => prompt.question("Nombre: "));
 const phone = await ask(() => prompt.question("Celular (10 dígitos): "));

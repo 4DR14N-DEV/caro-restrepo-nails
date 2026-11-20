@@ -22,6 +22,20 @@
       "when": 1795045780685,
       "tag": "0002_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795178945696,
+      "tag": "0003_rate_limits_attempt_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795182638949,
+      "tag": "0004_services_name_case_insensitive",
+      "breakpoints": true
     }
   ]
 }
