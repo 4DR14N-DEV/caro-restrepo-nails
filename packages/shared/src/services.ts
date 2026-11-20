@@ -65,7 +65,6 @@ export const serviceUpdateSchema = z
     message: "No hay cambios para guardar.",
   });
 
-export type ServiceInput = z.input<typeof serviceInputSchema>;
 export type ServiceData = z.output<typeof serviceInputSchema>;
 export type ServiceUpdate = z.output<typeof serviceUpdateSchema>;
 

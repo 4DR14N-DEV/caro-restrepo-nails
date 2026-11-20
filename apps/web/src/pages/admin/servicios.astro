@@ -1,0 +1,19 @@
+---
+import { AdminServices } from "../../components/AdminServices";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Servicios · Panel de Caro"
+  description="Panel de Caro Restrepo Nails para administrar los servicios del catálogo."
+>
+  <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
+    <a href="/" class="text-sm text-neutral-600 underline">← Volver al inicio</a>
+    <h1 class="text-2xl font-semibold tracking-tight">Servicios</h1>
+    <p class="text-neutral-600">
+      Los servicios inactivos no aparecen en el catálogo. Los cambios de precio o duración no
+      afectan las citas ya reservadas.
+    </p>
+    <AdminServices client:load />
+  </main>
+</BaseLayout>

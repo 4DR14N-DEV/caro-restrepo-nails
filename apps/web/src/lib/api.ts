@@ -1,4 +1,10 @@
-import type { PublicService, PublicUser } from "@caro/shared";
+import type {
+  AdminService,
+  PublicService,
+  PublicUser,
+  ServiceData,
+  ServiceUpdate,
+} from "@caro/shared";
 
 // Resultado de una llamada a la API: éxito con datos, o el código de error que devolvió.
 export type ApiResult<T> =
@@ -12,7 +18,7 @@ export type ApiResult<T> =
     };
 
 async function call<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH",
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
@@ -48,6 +54,11 @@ export const api = {
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
   services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
+  adminServices: () => call<{ services: AdminService[] }>("GET", "/api/admin/services"),
+  createService: (body: ServiceData) =>
+    call<{ service: AdminService }>("POST", "/api/admin/services", body),
+  updateService: (id: string, body: ServiceUpdate) =>
+    call<{ service: AdminService }>("PATCH", `/api/admin/services/${encodeURIComponent(id)}`, body),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.
