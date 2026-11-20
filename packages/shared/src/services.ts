@@ -16,24 +16,39 @@ export interface AdminService extends PublicService {
   active: boolean;
 }
 
-const nameMessage = "El nombre debe tener entre 2 y 60 caracteres.";
-const priceMessage = "El precio debe ser un número entero entre 0 y 2.000.000.";
-const durationMessage = "La duración debe estar entre 5 y 480 minutos.";
+// Límites de un servicio. Los mensajes y el formulario del panel salen de aquí.
+export const SERVICE_LIMITS = {
+  name: { min: 2, max: 60 },
+  priceCop: { min: 0, max: 2_000_000 },
+  durationMinutes: { min: 5, max: 480, step: 5 },
+} as const;
+
+const { name: nameLimits, priceCop: priceLimits, durationMinutes: durationLimits } = SERVICE_LIMITS;
+const nameMessage = `El nombre debe tener entre ${nameLimits.min} y ${nameLimits.max} caracteres.`;
+const priceMessage = `El precio debe ser un número entero entre ${priceLimits.min} y ${formatThousands(priceLimits.max)}.`;
+const durationMessage = `La duración debe estar entre ${durationLimits.min} y ${durationLimits.max} minutos.`;
 
 const serviceFields = {
-  name: z.string(nameMessage).trim().min(2, nameMessage).max(60, nameMessage),
+  name: z
+    .string(nameMessage)
+    .trim()
+    .min(nameLimits.min, nameMessage)
+    .max(nameLimits.max, nameMessage),
   // Pesos colombianos enteros, como en la base.
   priceCop: z
     .number(priceMessage)
     .int(priceMessage)
-    .min(0, priceMessage)
-    .max(2_000_000, priceMessage),
+    .min(priceLimits.min, priceMessage)
+    .max(priceLimits.max, priceMessage),
   durationMinutes: z
     .number(durationMessage)
     .int(durationMessage)
-    .min(5, durationMessage)
-    .max(480, durationMessage)
-    .multipleOf(5, "La duración debe ser múltiplo de 5 minutos."),
+    .min(durationLimits.min, durationMessage)
+    .max(durationLimits.max, durationMessage)
+    .multipleOf(
+      durationLimits.step,
+      `La duración debe ser múltiplo de ${durationLimits.step} minutos.`,
+    ),
 };
 
 export const serviceInputSchema = z.object(serviceFields);
@@ -57,7 +72,12 @@ export type ServiceUpdate = z.output<typeof serviceUpdateSchema>;
 // Pesos colombianos con punto de miles: 40000 → "$40.000". No depende del idioma del
 // navegador ni del servidor, para que se vea igual en todos lados.
 export function formatPrice(priceCop: number): string {
-  return `$${String(priceCop).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+  return `$${formatThousands(priceCop)}`;
+}
+
+// 2000000 → "2.000.000"
+function formatThousands(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 // 30 → "30 min", 60 → "1 h", 90 → "1 h 30 min".

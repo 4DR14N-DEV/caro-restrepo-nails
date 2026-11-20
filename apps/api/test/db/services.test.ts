@@ -3,7 +3,13 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
 import { createSession } from "../../src/auth/sessions.js";
-import { appointments, appointmentServices, services, users } from "../../src/db/schema.js";
+import {
+  appointments,
+  appointmentServices,
+  services,
+  sessions,
+  users,
+} from "../../src/db/schema.js";
 import { createTestDatabase } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
@@ -131,11 +137,50 @@ describe("permisos del panel de servicios", () => {
     expect(await database.db.select().from(services)).toHaveLength(1);
   });
 
-  it("una sesión vencida o inventada también responde 401", async () => {
+  it("un token inventado responde 401", async () => {
     const response = await request(app)
       .get("/api/admin/services")
       .set("Cookie", "session=token-inventado");
     expect(response.status).toBe(401);
+  });
+
+  it("una sesión de admin vencida responde 401", async () => {
+    const { cookie } = await asAdmin();
+    await database.db.update(sessions).set({ expiresAt: new Date(Date.now() - 1000) });
+
+    const response = await request(app).get("/api/admin/services").set("Cookie", cookie);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "unauthorized" });
+  });
+
+  // Igual que /me: si a la sesión le quedan menos de 15 días, se extiende y se reenvía.
+  it("renueva la cookie de una sesión por vencer, también si responde 403", async () => {
+    const admin = await asAdmin();
+    const client = await asClient();
+    await database.db
+      .update(sessions)
+      .set({ expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) });
+
+    const allowed = await request(app).get("/api/admin/services").set("Cookie", admin.cookie);
+    const forbidden = await request(app).get("/api/admin/services").set("Cookie", client.cookie);
+
+    expect(allowed.status).toBe(200);
+    expect(forbidden.status).toBe(403);
+    for (const [response, cookie] of [
+      [allowed, admin.cookie],
+      [forbidden, client.cookie],
+    ] as const) {
+      const sent = String(response.headers["set-cookie"]);
+      expect(sent).toContain(`${cookie};`);
+      expect(sent).toContain("Max-Age=2592000");
+    }
+  });
+
+  it("no reenvía la cookie si la sesión todavía no está por vencer", async () => {
+    const { cookie } = await asAdmin();
+    const response = await request(app).get("/api/admin/services").set("Cookie", cookie);
+    expect(response.headers["set-cookie"]).toBeUndefined();
   });
 
   it("una clienta recibe 403 y no puede crear ni editar", async () => {
@@ -271,7 +316,8 @@ describe("POST /api/admin/services", () => {
 describe("PATCH /api/admin/services/:id", () => {
   it("edita nombre, precio y duración", async () => {
     const { cookie } = await asAdmin();
-    const service = await insertService();
+    // Fecha vieja a propósito: así la comparación no depende de los milisegundos.
+    const service = await insertService({ updatedAt: new Date("2026-01-01T00:00:00Z") });
 
     const response = await request(app)
       .patch(`/api/admin/services/${service.id}`)

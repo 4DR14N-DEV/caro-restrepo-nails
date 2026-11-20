@@ -23,8 +23,9 @@ function nameTaken(res: Response): void {
     .json({ error: "name_taken", fields: { name: "Ya existe un servicio con ese nombre." } });
 }
 
-// Postgres 23505: violación de una restricción única (aquí, el nombre del servicio).
-// Drizzle puede envolver el error del driver, así que se mira también la causa.
+// Postgres 23505: violación de una restricción única. En `services` la única es el
+// nombre; crear y editar la detectan igual. Drizzle puede envolver el error del driver,
+// así que se mira también la causa.
 function isUniqueViolation(error: unknown): boolean {
   const code = (value: unknown) => (value as { code?: unknown } | null)?.code;
   return code(error) === "23505" || code((error as { cause?: unknown } | null)?.cause) === "23505";
@@ -48,16 +49,20 @@ export function adminServicesRouter(db: Database): Router {
     const parsed = serviceInputSchema.safeParse(req.body);
     if (!parsed.success) return invalidInput(res, parsed.error);
 
-    // Un servicio nuevo va al final del catálogo.
-    const [service] = await db
-      .insert(services)
-      .values({
-        ...parsed.data,
-        sortOrder: sql`(SELECT coalesce(max(${services.sortOrder}), 0) + 1 FROM ${services})`,
-      })
-      .onConflictDoNothing({ target: services.name })
-      .returning(adminColumns);
-    if (!service) return nameTaken(res);
+    let service: AdminService | undefined;
+    try {
+      // Un servicio nuevo va al final del catálogo.
+      [service] = await db
+        .insert(services)
+        .values({
+          ...parsed.data,
+          sortOrder: sql`(SELECT coalesce(max(${services.sortOrder}), 0) + 1 FROM ${services})`,
+        })
+        .returning(adminColumns);
+    } catch (error) {
+      if (isUniqueViolation(error)) return nameTaken(res);
+      throw error;
+    }
 
     res.status(201).json({ service });
   });
