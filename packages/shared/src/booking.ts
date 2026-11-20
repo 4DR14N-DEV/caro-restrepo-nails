@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { onlyKnownFields } from "./strict.js";
 
 // Reservas, compartidas por la API y la web. Los mensajes son textos de UI.
 
@@ -37,3 +38,35 @@ export const bookingTimesQuerySchema = z.object({
 
 export const serviceUnavailableMessage =
   "Alguno de los servicios ya no está disponible. Vuelve a elegirlos.";
+
+const timeMessage = "Elige una hora válida.";
+
+// Reservar: los servicios, el día y la hora de inicio (hora de Bogotá, "HH:MM").
+export const bookingRequestSchema = z.strictObject(
+  {
+    serviceIds: serviceIdsSchema,
+    date: bookingDateSchema,
+    time: z.string(timeMessage).regex(/^([01]\d|2[0-3]):[0-5]\d$/, timeMessage),
+  },
+  onlyKnownFields,
+);
+
+export type BookingRequest = z.output<typeof bookingRequestSchema>;
+
+export const slotTakenMessage = "Esa hora ya no está disponible. Elige otra.";
+
+// La cita recién confirmada, tal como la ve la clienta.
+export interface BookedAppointment {
+  id: string;
+  date: string;
+  time: string;
+  services: string[];
+  durationMinutes: number;
+  totalPriceCop: number;
+}
+
+export interface BookingResult {
+  appointment: BookedAppointment;
+  // Teléfono de Caro en formato E.164 para el enlace de WhatsApp; null si no hay cuenta admin.
+  caroWhatsapp: string | null;
+}

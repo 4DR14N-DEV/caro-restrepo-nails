@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { authRouter, type ClientIp } from "./auth/routes.js";
+import { appointmentsRouter } from "./booking/appointments-routes.js";
 import { bookingRouter } from "./booking/routes.js";
 import type { Database } from "./db/client.js";
 import { adminServicesRouter } from "./services/admin-routes.js";
@@ -36,6 +37,7 @@ export function createApp({
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
   app.use("/api/booking", bookingRouter(db, now));
+  app.use("/api/appointments", appointmentsRouter(db, now));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

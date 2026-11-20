@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { onlyKnownFields } from "./strict.js";
 
 // Servicios del catálogo, compartidos por la API y la web.
 // Los mensajes son textos de UI: el panel de Caro los muestra tal cual.
@@ -49,15 +50,6 @@ const serviceFields = {
       durationLimits.step,
       `La duración debe ser múltiplo de ${durationLimits.step} minutos.`,
     ),
-};
-
-// Un campo que no existe se rechaza en vez de descartarlo sin avisar: quien manda
-// `active` o `sortOrder` al crear sabe que no se aplicaron.
-const onlyKnownFields = {
-  error: (issue: { code: string; keys?: string[] }) =>
-    issue.code === "unrecognized_keys"
-      ? `No se aceptan estos campos: ${issue.keys?.join(", ")}.`
-      : undefined,
 };
 
 export const serviceInputSchema = z.strictObject(serviceFields, onlyKnownFields);

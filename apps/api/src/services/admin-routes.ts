@@ -3,6 +3,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { requireAdmin } from "../auth/require-admin.js";
 import type { Database } from "../db/client.js";
+import { hasPgCode, UNIQUE_VIOLATION } from "../db/errors.js";
 import { services } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 
@@ -23,13 +24,8 @@ function nameTaken(res: Response): void {
     .json({ error: "name_taken", fields: { name: "Ya existe un servicio con ese nombre." } });
 }
 
-// Postgres 23505: violación de una restricción única. En `services` la única es el
-// nombre; crear y editar la detectan igual. Drizzle puede envolver el error del driver,
-// así que se mira también la causa.
-function isUniqueViolation(error: unknown): boolean {
-  const code = (value: unknown) => (value as { code?: unknown } | null)?.code;
-  return code(error) === "23505" || code((error as { cause?: unknown } | null)?.cause) === "23505";
-}
+// En `services` la única restricción única es el nombre; crear y editar la detectan igual.
+const isUniqueViolation = (error: unknown) => hasPgCode(error, UNIQUE_VIOLATION);
 
 // Panel de Caro: crear, editar, activar y desactivar servicios. No se borran: las citas
 // guardan su propia copia, pero siguen referenciando el servicio.
