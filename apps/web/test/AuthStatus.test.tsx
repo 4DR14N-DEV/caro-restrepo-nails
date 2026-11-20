@@ -51,6 +51,23 @@ describe("AuthStatus", () => {
     );
   });
 
+  it("a Caro (admin) le muestra el enlace al panel de servicios", async () => {
+    mockApi({ me: json(200, { user: { ...ana, name: "Caro Restrepo", role: "admin" } }) });
+    render(<AuthStatus />);
+
+    expect(
+      (await screen.findByRole("link", { name: "Administrar servicios" })).getAttribute("href"),
+    ).toBe("/admin/servicios");
+  });
+
+  it("a una clienta no le muestra el enlace al panel", async () => {
+    mockApi({ me: json(200, { user: ana }) });
+    render(<AuthStatus />);
+
+    await screen.findByText("Ana María");
+    expect(screen.queryByRole("link", { name: "Administrar servicios" })).toBeNull();
+  });
+
   it("si la salida falla, avisa y mantiene la sesión a la vista", async () => {
     mockApi({ me: json(200, { user: ana }), logout: json(500, { error: "internal_error" }) });
     render(<AuthStatus />);
