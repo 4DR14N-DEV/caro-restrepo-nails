@@ -1,6 +1,6 @@
-import { formatDuration, formatPrice, type AdminService } from "@caro/shared";
+import { formatDuration, formatPrice, type AdminService, type ServiceData } from "@caro/shared";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, type ApiResult } from "../lib/api";
 import { ServiceForm } from "./ServiceForm";
 
 type Load =
@@ -21,13 +21,19 @@ export function AdminServices() {
   const [editing, setEditing] = useState<Editing>(null);
   const [toggleError, setToggleError] = useState<string>();
 
+  // Sin sesión (venció) o sin permiso: ninguna acción del panel puede funcionar, así que
+  // se muestra ese estado en vez de pedir que reintente.
+  const lostAccess = useCallback((result: ApiResult<unknown>): boolean => {
+    if (result.ok || (result.status !== 401 && result.status !== 403)) return false;
+    setLoad({ state: result.status === 401 ? "signed-out" : "forbidden" });
+    return true;
+  }, []);
+
   const fetchServices = useCallback(async () => {
     setLoad({ state: "loading" });
     const result = await api.adminServices();
     if (result.ok) setLoad({ state: "ready", services: result.data.services });
-    else if (result.status === 401) setLoad({ state: "signed-out" });
-    else if (result.status === 403) setLoad({ state: "forbidden" });
-    else
+    else if (!lostAccess(result))
       setLoad({
         state: "error",
         message:
@@ -35,7 +41,7 @@ export function AdminServices() {
             ? "No pudimos cargar los servicios. Revisa tu internet e inténtalo de nuevo."
             : "No pudimos cargar los servicios. Inténtalo de nuevo en un momento.",
       });
-  }, []);
+  }, [lostAccess]);
 
   useEffect(() => {
     void fetchServices();
@@ -59,7 +65,17 @@ export function AdminServices() {
     setToggleError(undefined);
     const result = await api.updateService(service.id, { active: !service.active });
     if (result.ok) upsert(result.data.service);
-    else setToggleError(`No pudimos guardar el cambio de ${service.name}. Inténtalo de nuevo.`);
+    else if (!lostAccess(result))
+      setToggleError(`No pudimos guardar el cambio de ${service.name}. Inténtalo de nuevo.`);
+  }
+
+  // Guardar desde el formulario: si se perdió el acceso, el panel cambia de estado.
+  function guarded(save: (data: ServiceData) => Promise<ApiResult<{ service: AdminService }>>) {
+    return async (data: ServiceData) => {
+      const result = await save(data);
+      lostAccess(result);
+      return result;
+    };
   }
 
   if (load.state === "loading") return <p className="text-neutral-600">Cargando servicios…</p>;
@@ -102,7 +118,7 @@ export function AdminServices() {
   return (
     <div className="flex flex-col gap-4">
       {editing === "new" ? (
-        <ServiceForm save={api.createService} onSaved={saved} onCancel={close} />
+        <ServiceForm save={guarded(api.createService)} onSaved={saved} onCancel={close} />
       ) : (
         <button
           type="button"
@@ -125,7 +141,7 @@ export function AdminServices() {
             <li key={service.id}>
               <ServiceForm
                 service={service}
-                save={(data) => api.updateService(service.id, data)}
+                save={guarded((data) => api.updateService(service.id, data))}
                 onSaved={saved}
                 onCancel={close}
               />

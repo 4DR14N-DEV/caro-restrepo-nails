@@ -228,4 +228,39 @@ describe("AdminServices: editar y activar", () => {
     );
     expect(row("Retiro").queryByText("Inactivo")).toBeNull();
   });
+
+  it.each([
+    [401, "unauthorized", "Ingresa con la cuenta de Caro para administrar los servicios."],
+    [403, "forbidden", "Esta página es solo para Caro."],
+  ])(
+    "si al activar o desactivar responde %i, muestra ese estado en vez de pedir reintentar",
+    async (status, error, message) => {
+      mockApi({
+        "GET /api/admin/services": list(retiro),
+        "PATCH /api/admin/services/s1": () => json(status, { error }),
+      });
+      render(<AdminServices />);
+
+      await userEvent.click(await screen.findByRole("button", { name: "Desactivar" }));
+
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Desactivar" })).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+    },
+  );
+
+  it("si al guardar el formulario la sesión venció, muestra el estado de ingreso", async () => {
+    mockApi({
+      "GET /api/admin/services": list(retiro),
+      "PATCH /api/admin/services/s1": () => json(401, { error: "unauthorized" }),
+    });
+    render(<AdminServices />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(
+      await screen.findByText("Ingresa con la cuenta de Caro para administrar los servicios."),
+    ).toBeTruthy();
+  });
 });

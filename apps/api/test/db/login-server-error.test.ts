@@ -97,7 +97,7 @@ describe("ingreso correcto con error del servidor (S1a)", () => {
     expect(await count(IP_KEY)).toBe(1);
   });
 
-  it("falla al crear la sesión sin IP conocida: el teléfono no se infla", async () => {
+  it("falla al limpiar el teléfono sin IP conocida: el teléfono no se infla", async () => {
     withIp = false;
     expect((await login("otra-clave")).status).toBe(401);
     expect(await count(PHONE_KEY)).toBe(1);
