@@ -23,4 +23,10 @@ describe("nextPath", () => {
       expect(nextPath(search), search).toBe("/");
     }
   });
+
+  it("no deja que un ../ normalice la ruta a otro sitio", () => {
+    for (const next of ["/..//evil.com", "/.//evil.com", "/a/..//evil.com", "/%2e%2e//evil.com"]) {
+      expect(nextPath(`?next=${encodeURIComponent(next)}`), next).toBe("/");
+    }
+  });
 });

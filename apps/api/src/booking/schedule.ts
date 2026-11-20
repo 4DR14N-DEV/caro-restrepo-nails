@@ -7,8 +7,8 @@ import {
   services,
   settings,
 } from "../db/schema.js";
-import type { DaySchedule } from "./availability.js";
-import { addDays, bogotaInstant, isoWeekday } from "./dates.js";
+import { availableTimes, bookingWindow, type DaySchedule } from "./availability.js";
+import { addDays, bogotaDate, bogotaInstant, isoWeekday } from "./dates.js";
 
 // Lee de la base lo que el motor de disponibilidad necesita.
 
@@ -76,4 +76,19 @@ export async function loadActiveServices(db: Database, ids: readonly string[]) {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const chosen = ids.flatMap((id) => byId.get(id) ?? []);
   return chosen.length === ids.length ? chosen : undefined;
+}
+
+// Horas que el motor ofrece ahora para un día y una duración. Mostrar las horas y
+// reservar usan esta misma función: solo se puede reservar una hora que se ofrece.
+export async function offeredTimes(
+  db: Database,
+  now: () => Date,
+  date: string,
+  durationMinutes: number,
+) {
+  const rules = await loadSettings(db);
+  const { first, last } = bookingWindow(bogotaDate(now()), rules);
+  if (date < first || date > last) return { rules, times: [] };
+  const [day] = await loadDays(db, date, date);
+  return { rules, times: day ? availableTimes(day, durationMinutes, rules) : [] };
 }

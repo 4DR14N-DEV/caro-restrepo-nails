@@ -1,5 +1,6 @@
 ---
 import { RegisterForm } from "../components/RegisterForm";
+import KeepNext from "../components/KeepNext.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -18,15 +19,5 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       ¿Ya tienes cuenta? <a href="/ingreso" data-keep-next class="font-medium underline">Ingresa</a>
     </p>
   </main>
+  <KeepNext />
 </BaseLayout>
-
-<script>
-  // Si se llegó con ?next=... (por ejemplo, desde /reservar), el enlace a la otra página lo
-  // conserva. El formulario vuelve a validar que sea una ruta interna.
-  const next = new URLSearchParams(window.location.search).get("next");
-  if (next) {
-    for (const link of document.querySelectorAll<HTMLAnchorElement>("a[data-keep-next]")) {
-      link.search = new URLSearchParams({ next }).toString();
-    }
-  }
-</script>

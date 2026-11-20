@@ -2,6 +2,7 @@
 // Colombia no tiene horario de verano: Bogotá es siempre UTC−5, así que un desfase fijo
 // convierte entre la hora de Bogotá y un instante.
 const BOGOTA_OFFSET = "-05:00";
+export const MINUTE = 60_000;
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
 const midnightUtc = (date: string) => new Date(`${date}T00:00:00Z`);

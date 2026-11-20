@@ -1,0 +1,13 @@
+---
+// Los enlaces marcados con data-keep-next (entre /ingreso y /registro) conservan ?next.
+---
+<script>
+  // Si se llegó con ?next=... (por ejemplo, desde /reservar), el enlace a la otra página lo
+  // conserva. El formulario vuelve a validar que sea una ruta interna.
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next) {
+    for (const link of document.querySelectorAll<HTMLAnchorElement>("a[data-keep-next]")) {
+      link.search = new URLSearchParams({ next }).toString();
+    }
+  }
+</script>

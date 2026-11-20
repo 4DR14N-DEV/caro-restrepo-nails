@@ -1,26 +1,14 @@
-import {
-  bookingRequestSchema,
-  slotTakenMessage,
-  summarize,
-  type BookingResult,
-} from "@caro/shared";
+import { bookingRequestSchema, summarize, type BookingResult } from "@caro/shared";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
-import { Router, type Response } from "express";
+import { Router } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
-import { EXCLUSION_VIOLATION, hasPgCode } from "../db/errors.js";
+import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode } from "../db/errors.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
-import { availableTimes, bookingWindow } from "./availability.js";
-import { bogotaDate, bogotaInstant } from "./dates.js";
-import { serviceUnavailable } from "./routes.js";
-import { loadActiveServices, loadDays, loadSettings } from "./schedule.js";
-
-const MINUTE = 60_000;
-
-function slotTaken(res: Response): void {
-  res.status(409).json({ error: "slot_taken", fields: { time: slotTakenMessage } });
-}
+import { bogotaInstant, MINUTE } from "./dates.js";
+import { serviceUnavailable, slotTaken } from "./responses.js";
+import { loadActiveServices, offeredTimes } from "./schedule.js";
 
 // Teléfono de la cuenta de Caro para el botón de WhatsApp (la primera admin creada).
 async function caroPhone(db: Database): Promise<string | null> {
@@ -51,12 +39,8 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
 
     // La disponibilidad se vuelve a calcular aquí: solo vale una hora que el motor ofrece
     // ahora mismo, no la que la página mostró hace un rato.
-    const rules = await loadSettings(db);
-    const { first, last } = bookingWindow(bogotaDate(now()), rules);
-    const [day] = date >= first && date <= last ? await loadDays(db, date, date) : [];
-    if (!day || !availableTimes(day, durationMinutes, rules).includes(time)) {
-      return slotTaken(res);
-    }
+    const { rules, times } = await offeredTimes(db, now, date, durationMinutes);
+    if (!times.includes(time)) return slotTaken(res);
 
     // Se busca antes de guardar: después del commit, un fallo de esta lectura daría un
     // error a una clienta cuya cita sí quedó guardada.
@@ -95,8 +79,11 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
       });
     } catch (error) {
       // Otra reserva tomó la hora entre el cálculo y el guardado: la restricción de
-      // exclusión de la base lo impide (RF21).
-      if (hasPgCode(error, EXCLUSION_VIOLATION)) return slotTaken(res);
+      // exclusión de la base lo impide (RF21). Si las dos se esperaban una a la otra,
+      // Postgres corta una con un interbloqueo: para la clienta es lo mismo.
+      if (hasPgCode(error, EXCLUSION_VIOLATION) || hasPgCode(error, DEADLOCK)) {
+        return slotTaken(res);
+      }
       throw error;
     }
 

@@ -3,7 +3,13 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
 import { createSession } from "../../src/auth/sessions.js";
-import { appointments, appointmentServices, services, users } from "../../src/db/schema.js";
+import {
+  appointments,
+  appointmentServices,
+  services,
+  sessions,
+  users,
+} from "../../src/db/schema.js";
 import { seed } from "../../src/db/seed-data.js";
 import { createTestDatabase } from "./helpers.js";
 
@@ -117,6 +123,21 @@ describe("POST /api/appointments", () => {
     expect(body.times).toContain("11:40");
   });
 
+  it("renueva la cookie de una sesión por vencer al reservar", async () => {
+    const { cookie } = await signedIn("client", "+573001234567");
+    await database.db
+      .update(sessions)
+      .set({ expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) });
+    const manos = await serviceId("Semipermanente manos");
+
+    const response = await book(cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" });
+
+    expect(response.status).toBe(201);
+    const sent = String(response.headers["set-cookie"]);
+    expect(sent).toContain(`${cookie};`);
+    expect(sent).toContain("Max-Age=2592000");
+  });
+
   it("sin cuenta de Caro devuelve el WhatsApp vacío", async () => {
     const { cookie } = await signedIn("client", "+573001234567");
     const manos = await serviceId("Semipermanente manos");
@@ -218,6 +239,52 @@ describe("POST /api/appointments", () => {
     }
     const saved = await database.db.select().from(appointments);
     expect(saved.map((appointment) => appointment.clientId)).toEqual([luisa.userId]);
+    expect(await database.db.select().from(appointmentServices)).toEqual([]);
+  });
+
+  it("si la base corta un interbloqueo entre dos reservas, responde 409 y no guarda nada", async () => {
+    const ana = await signedIn("client", "+573001234567");
+    const luisa = await signedIn("client", "+573009876543", "Luisa");
+    const manos = await serviceId("Semipermanente manos");
+    const other = await database.pool.connect();
+    const insert = (start: string, end: string) =>
+      other.query(
+        `INSERT INTO appointments (client_id, start_at, end_at, occupied_until, total_price_cop, created_by)
+         VALUES ($1, $2, $3, $3, 0, 'client')`,
+        [luisa.userId, start, end],
+      );
+    try {
+      await other.query("BEGIN");
+      await insert("2026-11-23T15:00:00Z", "2026-11-23T15:30:00Z"); // 10:00–10:30
+      const pending = book(ana.cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" }).then(
+        (response) => response,
+      );
+      let blocked = false;
+      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
+        const { rows } = await database.pool.query(
+          `SELECT count(*)::int AS n FROM pg_stat_activity
+           WHERE wait_event_type = 'Lock' AND datname = current_database()
+             AND query ILIKE 'insert into "appointments"%'`,
+        );
+        blocked = rows[0].n > 0;
+        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
+      // Pisa la cita de Ana (10:00–11:10): cada transacción espera a la otra y Postgres
+      // corta una de las dos (interbloqueo).
+      await insert("2026-11-23T16:00:00Z", "2026-11-23T16:05:00Z").catch(() => undefined);
+      await other.query("ROLLBACK");
+
+      const response = await pending;
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: "slot_taken",
+        fields: { time: "Esa hora ya no está disponible. Elige otra." },
+      });
+    } finally {
+      other.release();
+    }
+    expect(await database.db.select().from(appointments)).toEqual([]);
     expect(await database.db.select().from(appointmentServices)).toEqual([]);
   });
 

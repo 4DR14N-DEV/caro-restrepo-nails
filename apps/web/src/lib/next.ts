@@ -9,6 +9,9 @@ export function nextPath(search: string): string {
   if (!next || !next.startsWith("/") || next.startsWith("//") || /[\\\s\p{Cc}]/u.test(next)) {
     return "/";
   }
+  // Se revisa también la ruta ya normalizada: "/..//otro-sitio.com" queda como
+  // "//otro-sitio.com", que el navegador toma como otro sitio.
   const url = new URL(next, SAME_ORIGIN);
-  return url.origin === SAME_ORIGIN ? url.pathname + url.search + url.hash : "/";
+  if (url.origin !== SAME_ORIGIN || url.pathname.startsWith("//")) return "/";
+  return url.pathname + url.search + url.hash;
 }

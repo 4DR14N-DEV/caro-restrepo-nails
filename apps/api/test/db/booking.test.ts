@@ -80,6 +80,14 @@ describe("GET /api/booking/days", () => {
     expect(days).toHaveLength(23);
   });
 
+  it("a las 10 p. m. de Bogotá (03:00 UTC del día siguiente) cuenta desde la fecha de Bogotá", async () => {
+    const lateApp = createApp({ db: database.db, now: () => new Date("2026-11-20T03:00:00Z") });
+    const { body } = await request(lateApp).get("/api/booking/days");
+    // En Bogotá todavía es el 19: la ventana va del 21 de noviembre al 19 de diciembre.
+    expect(body.days[0]).toBe("2026-11-21");
+    expect(body.days.at(-1)).toBe("2026-12-19");
+  });
+
   it("quita un día bloqueado entero y suma un domingo con apertura extra", async () => {
     await database.db.insert(scheduleExceptions).values([
       {
@@ -133,6 +141,18 @@ describe("GET /api/booking/times", () => {
     expect(body.times).not.toContain("09:00");
     expect(body.times).toContain("11:10");
     expect(body.times).toContain("15:00");
+  });
+
+  it("acepta los ids de servicio en mayúsculas y los trata como el mismo servicio", async () => {
+    const manos = await serviceId("Semipermanente manos");
+
+    const upper = await times("2026-11-23", [manos.toUpperCase()]);
+    expect(upper.status).toBe(200);
+    expect(upper.body.times[0]).toBe("09:00");
+
+    const repeated = await times("2026-11-23", [manos, manos.toUpperCase()]);
+    expect(repeated.status).toBe(400);
+    expect(repeated.body.fields).toEqual({ services: "No repitas servicios." });
   });
 
   it("fuera de la ventana, un domingo o un festivo no hay horas", async () => {

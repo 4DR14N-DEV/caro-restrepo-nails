@@ -1,4 +1,4 @@
-import { addDays, addMonths, bogotaInstant, bogotaTime } from "./dates.js";
+import { addDays, addMonths, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
 import { isClosedDay } from "./holidays.js";
 
 // Motor de disponibilidad (RF05): qué horas de inicio se ofrecen un día para un bloque
@@ -23,8 +23,6 @@ export interface Interval {
   start: Date;
   end: Date;
 }
-
-const MINUTE = 60_000;
 
 // Ventana de reserva por fechas de Bogotá: desde `bookingMinDays` días después de hoy
 // hasta `bookingMaxMonths` meses de calendario después de hoy, ambos incluidos.

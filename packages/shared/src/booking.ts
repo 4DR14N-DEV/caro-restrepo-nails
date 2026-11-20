@@ -8,9 +8,16 @@ export const MAX_SERVICES_PER_BOOKING = 10;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const pickMessage = "Elige al menos un servicio.";
 
-// Los servicios de una cita: uno o varios, sin repetir.
+// Los servicios de una cita: uno o varios, sin repetir. Los ids se pasan a minúsculas,
+// como los guarda la base, para que "ABC…" y "abc…" sean el mismo servicio.
 export const serviceIdsSchema = z
-  .array(z.string(pickMessage).regex(UUID, pickMessage), pickMessage)
+  .array(
+    z
+      .string(pickMessage)
+      .regex(UUID, pickMessage)
+      .transform((id) => id.toLowerCase()),
+    pickMessage,
+  )
   .min(1, pickMessage)
   .max(MAX_SERVICES_PER_BOOKING, `Elige como máximo ${MAX_SERVICES_PER_BOOKING} servicios.`)
   .refine((ids) => new Set(ids).size === ids.length, "No repitas servicios.");
