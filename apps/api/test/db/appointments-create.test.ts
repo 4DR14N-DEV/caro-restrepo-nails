@@ -195,12 +195,19 @@ describe("POST /api/appointments", () => {
         (response) => response,
       );
       // Espera a que el guardado de Ana esté bloqueado por la cita sin confirmar.
-      for (let waiting = 0; waiting === 0;) {
+      // Con un tope: si el guardado nunca se bloquea, el test falla con un mensaje claro
+      // en vez de quedarse esperando.
+      let blocked = false;
+      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
         const { rows } = await database.pool.query(
-          "SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
+          `SELECT count(*)::int AS n FROM pg_stat_activity
+           WHERE wait_event_type = 'Lock' AND datname = current_database()
+             AND query ILIKE 'insert into "appointments"%'`,
         );
-        waiting = rows[0].n;
+        blocked = rows[0].n > 0;
+        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
       }
+      expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
       await other.query("COMMIT");
 
       const response = await pending;

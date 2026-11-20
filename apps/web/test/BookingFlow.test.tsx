@@ -162,6 +162,31 @@ describe("BookingFlow", () => {
     expect(screen.queryByRole("button", { name: "Confirmar reserva" })).toBeNull();
   });
 
+  it("si Caro desactivó un servicio mientras tanto, lo avisa y recarga el catálogo", async () => {
+    const message = "Alguno de los servicios ya no está disponible. Vuelve a elegirlos.";
+    mockApi({
+      ...signedIn,
+      "GET /api/services": [
+        () => json(200, { services: catalog }),
+        () => json(200, { services: catalog.filter((service) => service.id !== "s3") }),
+      ],
+      "GET /api/booking/times": () => json(200, { times: ["10:00"] }),
+      "POST /api/appointments": () =>
+        json(409, { error: "service_unavailable", fields: { services: message } }),
+    });
+    render(<BookingFlow />);
+
+    await pickServicesAndDay();
+    await userEvent.click(await screen.findByRole("button", { name: "10:00 a. m." }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar reserva" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(message);
+    await vi.waitFor(() => expect(screen.queryByRole("checkbox", { name: /Retiro/ })).toBeNull());
+    expect(screen.getAllByRole("checkbox").every((box) => !(box as HTMLInputElement).checked)).toBe(
+      true,
+    );
+  });
+
   it("un día sin horas libres lo dice", async () => {
     mockApi({ ...signedIn, "GET /api/booking/times": () => json(200, { times: [] }) });
     render(<BookingFlow />);

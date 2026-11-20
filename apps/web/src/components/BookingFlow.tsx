@@ -3,6 +3,8 @@ import {
   formatTime,
   formatWhen,
   selectionSummary,
+  serviceUnavailableMessage,
+  slotTakenMessage,
   summarize,
   type BookingResult,
   type PublicService,
@@ -42,7 +44,8 @@ export function BookingFlow() {
   const [times, setTimes] = useState<Times>({ state: "idle" });
   // Cambiarlo vuelve a pedir las horas (por ejemplo, después de perder una hora).
   const [timesRequest, setTimesRequest] = useState(0);
-  const [notice, setNotice] = useState<string>();
+  // Aviso para la clienta, junto a la parte que tiene que volver a elegir.
+  const [notice, setNotice] = useState<{ text: string; at: "services" | "times" }>();
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState<BookingResult>();
 
@@ -123,15 +126,15 @@ export function BookingFlow() {
 
     setTime(undefined);
     if (result.error === "slot_taken") {
-      setNotice(result.fields?.time);
+      setNotice({ text: result.fields?.time ?? slotTakenMessage, at: "times" });
       setTimesRequest((count) => count + 1);
     } else if (result.error === "service_unavailable") {
       // Caro desactivó un servicio mientras tanto: se recarga el catálogo y se vuelve a elegir.
-      setNotice(result.fields?.services);
+      setNotice({ text: result.fields?.services ?? serviceUnavailableMessage, at: "services" });
       setSelected(new Set());
       void fetchAll();
     } else {
-      setNotice(formErrorMessage(result));
+      setNotice({ text: formErrorMessage(result), at: "times" });
     }
   }
 
@@ -164,6 +167,11 @@ export function BookingFlow() {
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">1. Elige los servicios</h2>
+        {notice?.at === "services" && (
+          <p role="alert" className="text-red-700">
+            {notice.text}
+          </p>
+        )}
         <ServicePicker services={load.services} selected={selected} onToggle={toggle} />
       </section>
 
@@ -186,9 +194,9 @@ export function BookingFlow() {
       {chosen.length > 0 && date && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">3. Elige la hora</h2>
-          {notice && (
+          {notice?.at === "times" && (
             <p role="alert" className="text-red-700">
-              {notice}
+              {notice.text}
             </p>
           )}
           {times.state === "loading" && <p className="text-neutral-600">Buscando horas…</p>}
