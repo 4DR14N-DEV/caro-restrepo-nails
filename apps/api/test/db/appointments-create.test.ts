@@ -176,6 +176,44 @@ describe("POST /api/appointments", () => {
     expect(await database.db.select().from(appointmentServices)).toHaveLength(1);
   });
 
+  it("si otra reserva se guarda entre el cálculo y el guardado, la base la frena y responde 409", async () => {
+    const ana = await signedIn("client", "+573001234567");
+    const luisa = await signedIn("client", "+573009876543", "Luisa");
+    const manos = await serviceId("Semipermanente manos");
+
+    // Otra conexión guarda la cita de Luisa a las 10:00 sin confirmarla todavía: el cálculo
+    // de Ana no la ve, y su guardado queda esperando a la restricción de exclusión.
+    const other = await database.pool.connect();
+    try {
+      await other.query("BEGIN");
+      await other.query(
+        `INSERT INTO appointments (client_id, start_at, end_at, occupied_until, total_price_cop, created_by)
+         VALUES ($1, '2026-11-23T15:00:00Z', '2026-11-23T16:00:00Z', '2026-11-23T16:10:00Z', 40000, 'client')`,
+        [luisa.userId],
+      );
+      const pending = book(ana.cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" }).then(
+        (response) => response,
+      );
+      // Espera a que el guardado de Ana esté bloqueado por la cita sin confirmar.
+      for (let waiting = 0; waiting === 0;) {
+        const { rows } = await database.pool.query(
+          "SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
+        );
+        waiting = rows[0].n;
+      }
+      await other.query("COMMIT");
+
+      const response = await pending;
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe("slot_taken");
+    } finally {
+      other.release();
+    }
+    const saved = await database.db.select().from(appointments);
+    expect(saved.map((appointment) => appointment.clientId)).toEqual([luisa.userId]);
+    expect(await database.db.select().from(appointmentServices)).toEqual([]);
+  });
+
   it("responde 409 si algún servicio ya no está disponible", async () => {
     const { cookie } = await signedIn("client", "+573001234567");
     const manos = await serviceId("Semipermanente manos");

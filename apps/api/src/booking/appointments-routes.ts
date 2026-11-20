@@ -58,6 +58,10 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
       return slotTaken(res);
     }
 
+    // Se busca antes de guardar: después del commit, un fallo de esta lectura daría un
+    // error a una clienta cuya cita sí quedó guardada.
+    const caroWhatsapp = await caroPhone(db);
+
     const startAt = bogotaInstant(date, time);
     const endAt = new Date(startAt.getTime() + durationMinutes * MINUTE);
     const occupiedUntil = new Date(endAt.getTime() + rules.bufferMinutes * MINUTE);
@@ -105,7 +109,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         durationMinutes,
         totalPriceCop: priceCop,
       },
-      caroWhatsapp: await caroPhone(db),
+      caroWhatsapp,
     };
     res.status(201).json(result);
   });
