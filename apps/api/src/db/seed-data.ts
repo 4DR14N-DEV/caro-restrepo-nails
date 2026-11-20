@@ -24,13 +24,16 @@ const weeklyHours = [1, 2, 3, 4, 5, 6].map((weekday) => ({
 }));
 
 // Carga los datos iniciales. Es idempotente: si un registro ya existe no lo toca,
-// así una nueva corrida no pisa los cambios que Caro haga desde el panel.
+// así una nueva corrida no pisa los cambios que Caro haga desde el panel. El catálogo
+// se carga solo si no hay ningún servicio: si Caro renombró uno, no vuelve a aparecer.
 export async function seed(db: NodePgDatabase<typeof schema>): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx
-      .insert(services)
-      .values(catalog.map((service, index) => ({ ...service, sortOrder: index + 1 })))
-      .onConflictDoNothing({ target: services.name });
+    const [existing] = await tx.select({ id: services.id }).from(services).limit(1);
+    if (!existing) {
+      await tx
+        .insert(services)
+        .values(catalog.map((service, index) => ({ ...service, sortOrder: index + 1 })));
+    }
     await tx.insert(businessHours).values(weeklyHours).onConflictDoNothing();
     await tx.insert(settings).values({ id: 1 }).onConflictDoNothing();
   });

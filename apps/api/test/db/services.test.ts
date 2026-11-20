@@ -313,6 +313,50 @@ describe("POST /api/admin/services", () => {
   });
 });
 
+describe("nombres sin distinguir mayúsculas", () => {
+  it("no permite crear un servicio que solo cambia mayúsculas", async () => {
+    const { cookie } = await asAdmin();
+    await insertService({ name: "Retiro" });
+
+    for (const name of ["retiro", "RETIRO", "  rEtIrO  "]) {
+      const response = await request(app)
+        .post("/api/admin/services")
+        .set("Cookie", cookie)
+        .send({ ...newService, name });
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe("name_taken");
+    }
+    expect(await database.db.select().from(services)).toHaveLength(1);
+  });
+
+  it("no permite renombrar a otro servicio cambiando solo mayúsculas", async () => {
+    const { cookie } = await asAdmin();
+    await insertService({ name: "Retoque", sortOrder: 2 });
+    const service = await insertService({ name: "Retiro" });
+
+    const response = await request(app)
+      .patch(`/api/admin/services/${service.id}`)
+      .set("Cookie", cookie)
+      .send({ name: "retoque" });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("name_taken");
+  });
+
+  it("sí permite corregir las mayúsculas del propio servicio", async () => {
+    const { cookie } = await asAdmin();
+    const service = await insertService({ name: "retiro" });
+
+    const response = await request(app)
+      .patch(`/api/admin/services/${service.id}`)
+      .set("Cookie", cookie)
+      .send({ name: "Retiro" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.service.name).toBe("Retiro");
+  });
+});
+
 describe("PATCH /api/admin/services/:id", () => {
   it("edita nombre, precio y duración", async () => {
     const { cookie } = await asAdmin();
