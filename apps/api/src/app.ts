@@ -1,6 +1,7 @@
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { authRouter, type ClientIp } from "./auth/routes.js";
 import type { Database } from "./db/client.js";
+import { servicesRouter } from "./services/routes.js";
 
 export interface AppDependencies {
   db: Database;
@@ -24,6 +25,7 @@ export function createApp({ db, clientIp = socketAddress }: AppDependencies): Ex
   });
 
   app.use("/api/auth", authRouter(db, clientIp));
+  app.use("/api/services", servicesRouter(db));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

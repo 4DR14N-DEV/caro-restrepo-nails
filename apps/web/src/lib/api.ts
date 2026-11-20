@@ -1,4 +1,4 @@
-import type { PublicUser } from "@caro/shared";
+import type { PublicService, PublicUser } from "@caro/shared";
 
 // Resultado de una llamada a la API: éxito con datos, o el código de error que devolvió.
 export type ApiResult<T> =
@@ -47,6 +47,7 @@ export const api = {
   login: (body: unknown) => call<{ user: PublicUser }>("POST", "/api/auth/login", body),
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
+  services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.

@@ -12,13 +12,13 @@ Rama: `feat/entrega-3-catalogo` · Estrategia de entrega: ask-on-risk · Runner 
 
 ## Tasks
 
-| ID  | Specs    | Ruta   | Estado    | Commit  |
-| --- | -------- | ------ | --------- | ------- |
-| T1  | S1, S2a  | inline | hecho     | d53a8b1 |
-| T2  | S2b–S2d  | inline | pendiente |         |
-| T3  | S3, S4   | inline | pendiente |         |
-| T4  | S5 (API) | inline | pendiente |         |
-| T5  | S5 (web) | inline | pendiente |         |
+| ID  | Specs    | Ruta   | Estado    | Commit           |
+| --- | -------- | ------ | --------- | ---------------- |
+| T1  | S1, S2a  | inline | hecho     | d53a8b1          |
+| T2  | S2b–S2d  | inline | hecho     | 12b5b0b, 319aef8 |
+| T3  | S3, S4   | inline | hecho     |                  |
+| T4  | S5 (API) | inline | pendiente |                  |
+| T5  | S5 (web) | inline | pendiente |                  |
 
 Ruta: todo inline; las unidades dependen entre sí (T3 → T4 → T5 comparten esquema y validación), así que no hay trigger de writer. Riesgo: ítem 1 (migración) en T2; ítem 5 (dependencias nuevas) en T2; ítem 2 (permisos de admin) en T4.
 
@@ -30,3 +30,5 @@ Ruta: todo inline; las unidades dependen entre sí (T3 → T4 → T5 comparten e
 - L4: Revisión nativa de d53a8b1 (assess high por auth; lentes risk, resilience, reliability): consentimiento otorgado; aprobada y acuse hecho (`authority: burned`, lineage review-79aaeabd0396d48d). Antes hubo un stop `managed_assets_outdated` resuelto con `gentle-ai sync`. Risk y resilience sin hallazgos. Reliability, no bloqueantes: (R3-001) posible doble devolución del intento de la IP → no aplica: `release()` saca la clave de `pending` antes del `await` (routes.ts:154-156); (R3-002) sin test automático del cancelar/relanzar de `create-admin` → S2d; (R3-003) los tests de R4-001 parten de contadores en cero → S2d.
 - L5 (2026-11-20, usuario): "sí, me sirven todos, arranquemos" (aprueba la tabla de 11 valores: #1–#3 catálogo público, #4–#8 panel de Caro, #9 renombrar `failed_count`, #10 tests de componentes, #11 un solo PR).
 - L6: T2. (S2b) Migración `0003_rate_limits_attempt_count` generada con drizzle-kit (opción "rename"): `RENAME COLUMN failed_count TO attempt_count` y cambio de nombre de la restricción. Probada en una base descartable: con 0000–0002 aplicadas y una fila con `failed_count = 7`, tras 0003 la fila conserva `attempt_count = 7` y la restricción nueva rechaza negativos. **Al mergear: aplicar la migración en Supabase justo antes del merge.** (S2d) Tests de R4-001 con un fallo previo: el teléfono y la IP quedan en 1 si falla la limpieza; si falla la sesión, la IP queda en 1. Mutación que devuelve el intento dos veces → el test falla ("expected +0 to be 1"); restaurado. `ask()` de `create-admin` pasa a `src/db/ask.ts` (`createAsk`): RED por módulo inexistente → 6 tests verdes (respuesta, cierre, cierre con rechazo, ya cerrado, otro error tal cual, un solo listener). (S2c) `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event` y `happy-dom` como devDependencies de la web; 3 tests de `AuthStatus` (sin sesión, salida correcta, salida que falla). Mutación que ignora el error de salida → el test falla; restaurado. Chequeos: test:db 54/54, test 48/48, typecheck, lint, formato y build de la web en verde; `create-admin` por terminal: Ctrl+D → "Cancelado", flujo completo → "Cuenta admin lista".
+- L7: Revisión nativa de 2e3e816..319aef8 (assess high por auth; lentes risk, resilience, reliability): consentimiento otorgado; aprobada y acuse hecho (lineage review-c11b476bebf516b0). No bloqueantes, aceptados: (R1-001, R4-001, R3-001) el renombre no es compatible hacia atrás: el ingreso y el registro dan 500 entre migrar y desplegar, y no hay migración inversa (aceptado en L5 #9; el sitio es privado); (R3-002) el `cancel` real de `create-admin` solo se prueba por terminal (L6).
+- L8: T3. (shared) `formatPrice`, `formatDuration`, `summarize`, `selectionSummary` y el tipo `PublicService`: RED por módulo inexistente → 7 tests verdes. (API) `GET /api/services` público: activos, por `sort_order` y luego nombre, solo id/nombre/precio/duración: RED 4 × "expected 404 to be 200" → 4 verdes. (web) `ServiceCatalog` (contenedor: carga, error con "Reintentar", vacío, selección) y `ServicePicker` (presentacional, reutilizable al reservar); página `/servicios` y botón "Ver servicios y precios" en el inicio: RED por módulo inexistente → 5 tests verdes. Chequeos: test:db 58/58, test 60/60, typecheck, lint, formato y build (5 páginas) en verde. Prueba local de punta a punta (base de desarrollo migrada con el seed): la API devuelve 10 servicios, también por el proxy de Astro; `/servicios` sirve la isla del catálogo y el inicio enlaza a `/servicios`.
