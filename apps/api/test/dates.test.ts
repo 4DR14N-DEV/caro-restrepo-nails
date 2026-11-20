@@ -5,19 +5,10 @@ import {
   bogotaDate,
   bogotaInstant,
   bogotaTime,
-  isCalendarDate,
   isoWeekday,
 } from "../src/booking/dates.js";
 
 describe("fechas de Bogotá", () => {
-  it("reconoce solo fechas reales del calendario", () => {
-    expect(isCalendarDate("2026-11-20")).toBe(true);
-    expect(isCalendarDate("2028-02-29")).toBe(true);
-    expect(isCalendarDate("2026-02-29")).toBe(false);
-    expect(isCalendarDate("2026-11-20T00:00")).toBe(false);
-    expect(isCalendarDate("20-11-2026")).toBe(false);
-  });
-
   it("suma días y meses de calendario, con el último día si el mes es más corto", () => {
     expect(addDays("2026-12-30", 3)).toBe("2027-01-02");
     expect(addMonths("2026-11-20", 1)).toBe("2026-12-20");

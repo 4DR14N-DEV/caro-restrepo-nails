@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { authRouter, type ClientIp } from "./auth/routes.js";
+import { bookingRouter } from "./booking/routes.js";
 import type { Database } from "./db/client.js";
 import { adminServicesRouter } from "./services/admin-routes.js";
 import { servicesRouter } from "./services/routes.js";
@@ -9,13 +10,19 @@ export interface AppDependencies {
   // Cómo obtener la IP de la clienta. Depende de la plataforma (en Netlify viene en una
   // cabecera); por defecto, la dirección de la conexión.
   clientIp?: ClientIp;
+  // Reloj de la app; los tests lo fijan para que la ventana de reserva sea predecible.
+  now?: () => Date;
 }
 
 const socketAddress: ClientIp = (req) => req.socket.remoteAddress;
 
 // Construye la aplicación Express sin atarla a ninguna plataforma.
 // El servidor local y el adaptador de Netlify solo la envuelven.
-export function createApp({ db, clientIp = socketAddress }: AppDependencies): Express {
+export function createApp({
+  db,
+  clientIp = socketAddress,
+  now = () => new Date(),
+}: AppDependencies): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -28,6 +35,7 @@ export function createApp({ db, clientIp = socketAddress }: AppDependencies): Ex
   app.use("/api/auth", authRouter(db, clientIp));
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
+  app.use("/api/booking", bookingRouter(db, now));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

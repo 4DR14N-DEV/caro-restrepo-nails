@@ -95,18 +95,24 @@ describe("createAdmin", () => {
 const apiDir = fileURLToPath(new URL("../../", import.meta.url));
 
 function runCreateAdmin(input: string) {
-  return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+  return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const child = execFile(
       "node_modules/.bin/tsx",
       ["src/db/create-admin.ts"],
       { cwd: apiDir, env: { ...process.env, DATABASE_URL: testDatabaseUrl() } },
-      (_error, stdout, stderr) => resolve({ code: child.exitCode, stdout, stderr }),
+      (error, stdout, stderr) => {
+        // Si el proceso ni siquiera arrancó (por ejemplo, falta tsx), no hay código de
+        // salida: se muestra ese error en vez de un fallo confuso en las aserciones.
+        if (error && child.exitCode === null) reject(error);
+        else resolve({ code: child.exitCode, stdout, stderr });
+      },
     );
     child.stdin?.end(input);
   });
 }
 
-describe("pnpm db:create-admin por tubería", () => {
+// Arrancar tsx en frío y conectar a la base puede tardar más que el límite por defecto.
+describe("pnpm db:create-admin por tubería", { timeout: 30_000 }, () => {
   it("lee las cuatro respuestas aunque lleguen todas juntas", async () => {
     const result = await runCreateAdmin(
       "Caro Restrepo\n310 555 1234\nclave-de-caro\nclave-de-caro\n",

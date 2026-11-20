@@ -7,11 +7,6 @@ const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 const midnightUtc = (date: string) => new Date(`${date}T00:00:00Z`);
 const dateOf = (instant: Date) => instant.toISOString().slice(0, 10);
 
-// Una fecha real del calendario: "2026-02-30" no lo es.
-export function isCalendarDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) && dateOf(midnightUtc(text)) === text;
-}
-
 export function addDays(date: string, days: number): string {
   const instant = midnightUtc(date);
   instant.setUTCDate(instant.getUTCDate() + days);
