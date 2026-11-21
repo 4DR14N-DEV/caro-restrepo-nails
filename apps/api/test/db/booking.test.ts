@@ -155,6 +155,20 @@ describe("GET /api/booking/times", () => {
     expect(repeated.body.fields).toEqual({ services: "No repitas servicios." });
   });
 
+  it("con anticipación mínima de 0 días no ofrece horas que ya pasaron", async () => {
+    await database.pool.query("UPDATE settings SET booking_min_days = 0");
+    // Lunes 23 a las 10:10 en Bogotá.
+    const todayApp = createApp({ db: database.db, now: () => new Date("2026-11-23T15:10:00Z") });
+    const manos = await serviceId("Semipermanente manos");
+
+    const { body } = await request(todayApp)
+      .get("/api/booking/times")
+      .query({ date: "2026-11-23", services: manos });
+
+    expect(body.times[0]).toBe("10:30");
+    expect(body.times).not.toContain("10:00");
+  });
+
   it("fuera de la ventana, un domingo o un festivo no hay horas", async () => {
     const manos = await serviceId("Semipermanente manos");
     for (const date of ["2026-11-21", "2026-12-21", "2026-11-29", "2026-12-08"]) {

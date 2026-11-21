@@ -92,5 +92,7 @@ export async function offeredTimes(
   const { first, last } = bookingWindow(bogotaDate(now()), rules);
   if (date < first || date > last) return { rules, times: [] };
   const [day] = await loadDays(db, date, date);
-  return { rules, times: day ? availableTimes(day, durationMinutes, rules) : [] };
+  // Con anticipación mínima de 0 días, la fecha puede ser hoy: no se ofrecen horas pasadas.
+  const later = (time: string) => bogotaInstant(date, time) > now();
+  return { rules, times: day ? availableTimes(day, durationMinutes, rules).filter(later) : [] };
 }
