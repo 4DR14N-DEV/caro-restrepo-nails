@@ -54,6 +54,8 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // Lo que se está quitando: su botón queda deshabilitado para no mandar dos pedidos.
+  const [removing, setRemoving] = useState<string>();
   const past = date < today;
 
   function chooseKind(next: Kind) {
@@ -82,7 +84,9 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
   }
 
   async function remove(id: string) {
+    setRemoving(id);
     const result = await api.removeException(id);
+    setRemoving(undefined);
     if (!result.ok) return setProblem(problemOf(result));
     setProblem(undefined);
     onChanged();
@@ -109,6 +113,7 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
               {!past && (
                 <button
                   type="button"
+                  disabled={removing === exception.id}
                   onClick={() => void remove(exception.id)}
                   className="h-9 rounded-lg border border-neutral-300 px-3 text-sm"
                 >

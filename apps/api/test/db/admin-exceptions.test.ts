@@ -240,6 +240,19 @@ describe("POST /api/admin/exceptions", () => {
         { date: WEDNESDAY, kind: "block_day", clientId: "x" },
         { form: "No se aceptan estos campos: clientId." },
       ],
+      // Antes se ignoraban en silencio y respondía 201.
+      [
+        { date: WEDNESDAY, kind: "block_day", from: "13:00" },
+        { from: "Bloquear todo el día no lleva horas." },
+      ],
+      [
+        { date: WEDNESDAY, kind: "block_day", to: "14:00" },
+        { to: "Bloquear todo el día no lleva horas." },
+      ],
+      [
+        { date: WEDNESDAY, kind: "extra_open", from: "08:00", to: "08:30" },
+        { to: "Abrir más temprano va hasta la apertura habitual: no lleva hora de fin." },
+      ],
     ] as const) {
       const response = await add(caro.cookie, body);
       expect(response.status).toBe(400);
@@ -296,6 +309,30 @@ describe("DELETE /api/admin/exceptions/:id", () => {
     expect(response.status).toBe(204);
     expect(await stored()).toEqual([]);
     expect(await times(WEDNESDAY)).toContain("13:00");
+  });
+
+  it("no se puede quitar una apertura más temprano si hay una cita en esa franja", async () => {
+    const caro = await asCaro();
+    const ana = await signedIn("+573001234567");
+    const { body } = await add(caro.cookie, { date: WEDNESDAY, kind: "extra_open", from: "08:00" });
+    const [retiro] = await database.db
+      .select({ id: services.id })
+      .from(services)
+      .where(eq(services.name, "Retiro"));
+    await request(app)
+      .post("/api/appointments")
+      .set("Cookie", ana.cookie)
+      .send({ serviceIds: [retiro?.id], date: WEDNESDAY, time: "08:00" })
+      .expect(201);
+
+    const response = await remove(caro.cookie, body.exception.id);
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: "exception_conflict",
+      fields: { form: "Ya hay citas en esa franja. Muévelas o cancélalas primero." },
+    });
+    expect(await stored()).toHaveLength(1);
   });
 
   it("sin sesión 401; clienta 403; inexistente o mal formado 404; del pasado 409", async () => {

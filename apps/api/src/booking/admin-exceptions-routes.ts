@@ -114,7 +114,8 @@ export function adminExceptionsRouter(db: Database, now: () => Date): Router {
   });
 
   // Quitar algo cargado: las horas vuelven a ofrecerse solas. Toma el turno del día porque
-  // quitar una apertura más temprano también cambia qué horas están libres.
+  // quitar una apertura más temprano también cambia qué horas están libres, y no se puede
+  // si ya hay citas en esa franja: quedarían antes de la apertura.
   router.delete("/:id", async (req, res) => {
     const { id } = req.params;
     if (!isUuid(id)) {
@@ -129,11 +130,27 @@ export function adminExceptionsRouter(db: Database, now: () => Date): Router {
     const date = bogotaDate(row.startsAt);
     if (date < bogotaDate(now())) return conflict(res, "past_day", pastDayMessage);
 
+    let outcome: "removed" | "conflict";
     try {
-      await db.transaction(async (tx) => {
+      outcome = await db.transaction(async (tx) => {
         await limitLockWait(tx);
         await lockDay(tx, date);
+        if (row.kind === "extra_open") {
+          const [booked] = await tx
+            .select({ id: appointments.id })
+            .from(appointments)
+            .where(
+              and(
+                eq(appointments.status, "scheduled"),
+                lt(appointments.startAt, row.endsAt),
+                gt(appointments.endAt, row.startsAt),
+              ),
+            )
+            .limit(1);
+          if (booked) return "conflict";
+        }
         await tx.delete(scheduleExceptions).where(eq(scheduleExceptions.id, id));
+        return "removed";
       });
     } catch (error) {
       if (hasPgCode(error, LOCK_NOT_AVAILABLE)) {
@@ -141,6 +158,9 @@ export function adminExceptionsRouter(db: Database, now: () => Date): Router {
         return;
       }
       throw error;
+    }
+    if (outcome === "conflict") {
+      return conflict(res, "exception_conflict", exceptionConflictMessage);
     }
     res.status(204).end();
   });

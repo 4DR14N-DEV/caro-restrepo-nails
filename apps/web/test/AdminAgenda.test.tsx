@@ -390,6 +390,27 @@ describe("AdminAgenda: horario del día", () => {
     );
   });
 
+  it("«Quitar» se deshabilita mientras borra: un doble toque manda un solo pedido", async () => {
+    let finish: (response: Response) => void = () => {};
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [exception({})] }),
+      "DELETE /api/admin/exceptions/e1": () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    const quitar = within(section).getByRole("button", { name: "Quitar" });
+    await userEvent.click(quitar);
+    await userEvent.click(quitar);
+
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1);
+    expect((quitar as HTMLButtonElement).disabled).toBe(true);
+    finish(new Response(null, { status: 204 }));
+  });
+
   it("agrega un descanso con su franja y motivo", async () => {
     const fetchMock = mockApi({
       "GET /api/admin/agenda": [

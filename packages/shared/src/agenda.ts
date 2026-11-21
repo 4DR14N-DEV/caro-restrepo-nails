@@ -115,6 +115,12 @@ export const exceptionRequestSchema = z
   .superRefine((input, context) => {
     const issue = (path: string, message: string) =>
       context.addIssue({ code: "custom", path: [path], message });
+    // Lo que un tipo no usa se rechaza en vez de ignorarlo en silencio.
+    if (input.kind === "block_day") {
+      const noHours = "Bloquear todo el día no lleva horas.";
+      if (input.from) issue("from", noHours);
+      if (input.to) issue("to", noHours);
+    }
     if (input.kind === "block" || input.kind === "break") {
       if (!input.from) issue("from", startMessage);
       if (!input.to) issue("to", endMessage);
@@ -125,6 +131,9 @@ export const exceptionRequestSchema = z
     if (input.kind === "extra_open") {
       if (!input.from) issue("from", startMessage);
       else if (input.from < EARLIEST_OPENING) issue("from", "Se puede abrir desde las 8:00.");
+      if (input.to) {
+        issue("to", "Abrir más temprano va hasta la apertura habitual: no lleva hora de fin.");
+      }
     }
   });
 
