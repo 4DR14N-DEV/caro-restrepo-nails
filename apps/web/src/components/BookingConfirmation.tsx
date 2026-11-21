@@ -46,6 +46,12 @@ export function BookingConfirmation({ result, clientName }: Props) {
           Avisar a Caro por WhatsApp
         </a>
       )}
+      <a
+        href="/mis-citas"
+        className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+      >
+        Ver mis citas
+      </a>
       <a href="/" className="text-center text-sm text-neutral-600 underline">
         Volver al inicio
       </a>

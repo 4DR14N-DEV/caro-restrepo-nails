@@ -1,12 +1,20 @@
-import { bookingRequestSchema, summarize, type BookingResult } from "@caro/shared";
-import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
+import {
+  bookingRequestSchema,
+  HISTORY_LIMIT,
+  summarize,
+  type AppointmentState,
+  type BookingResult,
+  type MyAppointment,
+  type MyAppointments,
+} from "@caro/shared";
+import { and, asc, desc, eq, gt, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { Router } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
 import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "../db/errors.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
-import { bogotaInstant, MINUTE } from "./dates.js";
+import { bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
 import { serviceUnavailable, slotTaken } from "./responses.js";
 import { loadActiveServices, offeredTimes } from "./schedule.js";
 
@@ -21,9 +29,89 @@ async function caroPhone(db: Database): Promise<string | null> {
   return caro?.phone ?? null;
 }
 
-// Reservar (RF06): la cita queda confirmada al instante si la hora está libre.
+type Row = { id: string; startAt: Date; endAt: Date; status: string; totalPriceCop: number };
+
+// Las citas con sus servicios (la copia guardada al reservar) y su estado para la clienta.
+async function withServices(db: Database, rows: Row[], current: Date): Promise<MyAppointment[]> {
+  const copies = rows.length
+    ? await db
+        .select({
+          appointmentId: appointmentServices.appointmentId,
+          name: appointmentServices.serviceName,
+        })
+        .from(appointmentServices)
+        .where(
+          inArray(
+            appointmentServices.appointmentId,
+            rows.map((row) => row.id),
+          ),
+        )
+        .orderBy(asc(appointmentServices.serviceName))
+    : [];
+  return rows.map((row) => {
+    const state: AppointmentState =
+      row.status === "scheduled"
+        ? row.startAt > current
+          ? "upcoming"
+          : "past"
+        : (row.status as AppointmentState);
+    return {
+      id: row.id,
+      date: bogotaDate(row.startAt),
+      time: bogotaTime(row.startAt),
+      services: copies.filter((copy) => copy.appointmentId === row.id).map((copy) => copy.name),
+      durationMinutes: (row.endAt.getTime() - row.startAt.getTime()) / MINUTE,
+      totalPriceCop: row.totalPriceCop,
+      state,
+    };
+  });
+}
+
 export function appointmentsRouter(db: Database, now: () => Date): Router {
   const router = Router();
+
+  // Mis citas (RF07): solo las de la cuenta con sesión.
+  router.get("/", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+
+    const current = now();
+    const columns = {
+      id: appointments.id,
+      startAt: appointments.startAt,
+      endAt: appointments.endAt,
+      status: appointments.status,
+      totalPriceCop: appointments.totalPriceCop,
+    };
+    const mine = eq(appointments.clientId, user.id);
+    const [upcoming, history] = await Promise.all([
+      db
+        .select(columns)
+        .from(appointments)
+        .where(and(mine, eq(appointments.status, "scheduled"), gt(appointments.startAt, current)))
+        .orderBy(asc(appointments.startAt)),
+      db
+        .select(columns)
+        .from(appointments)
+        .where(
+          and(mine, or(ne(appointments.status, "scheduled"), lte(appointments.startAt, current))),
+        )
+        // Una cita cancelada y la que la reemplazó pueden tener la misma hora: se desempata
+        // por la más nueva, para que el orden (y el corte en 20) no cambie entre consultas.
+        .orderBy(desc(appointments.startAt), desc(appointments.createdAt), desc(appointments.id))
+        .limit(HISTORY_LIMIT),
+    ]);
+
+    const [upcomingList, historyList] = await Promise.all([
+      withServices(db, upcoming, current),
+      withServices(db, history, current),
+    ]);
+    const result: MyAppointments = { upcoming: upcomingList, history: historyList };
+    // Son datos personales: que no queden guardados en el navegador ni en intermediarios.
+    res.set("Cache-Control", "no-store").json(result);
+  });
+
+  // Reservar (RF06): la cita queda confirmada al instante si la hora está libre.
 
   router.post("/", async (req, res) => {
     const user = await currentUser(db, req, res);

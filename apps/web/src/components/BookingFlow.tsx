@@ -16,6 +16,9 @@ import { BookingConfirmation } from "./BookingConfirmation";
 import { ChoiceGrid } from "./ChoiceGrid";
 import { ServicePicker } from "./ServicePicker";
 
+const UNCONFIRMED_MESSAGE =
+  "No pudimos confirmar si tu cita quedó guardada. Revisa Mis citas antes de volver a intentarlo.";
+
 // Sin sesión se ingresa primero y después se vuelve aquí.
 const LOGIN_URL = `/ingreso?next=${encodeURIComponent("/reservar")}`;
 
@@ -45,7 +48,12 @@ export function BookingFlow() {
   // Cambiarlo vuelve a pedir las horas (por ejemplo, después de perder una hora).
   const [timesRequest, setTimesRequest] = useState(0);
   // Aviso para la clienta, junto a la parte que tiene que volver a elegir.
-  const [notice, setNotice] = useState<{ text: string; at: "services" | "times" }>();
+  const [notice, setNotice] = useState<{
+    text: string;
+    at: "services" | "times";
+    // Con un corte de internet la cita puede haber quedado guardada: se enlaza a Mis citas.
+    checkMine?: boolean;
+  }>();
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState<BookingResult>();
 
@@ -146,7 +154,11 @@ export function BookingFlow() {
     } else if (result.error === "service_unavailable") {
       serviceGone(result.fields?.services);
     } else {
-      setNotice({ text: formErrorMessage(result), at: "times" });
+      setNotice(
+        result.error === "network"
+          ? { text: UNCONFIRMED_MESSAGE, at: "times", checkMine: true }
+          : { text: formErrorMessage(result), at: "times" },
+      );
     }
   }
 
@@ -209,6 +221,14 @@ export function BookingFlow() {
           {notice?.at === "times" && (
             <p role="alert" className="text-red-700">
               {notice.text}
+              {notice.checkMine && (
+                <>
+                  {" "}
+                  <a href="/mis-citas" className="font-medium underline">
+                    Ir a Mis citas
+                  </a>
+                </>
+              )}
             </p>
           )}
           {times.state === "loading" && <p className="text-neutral-600">Buscando horas…</p>}

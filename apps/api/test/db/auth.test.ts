@@ -275,6 +275,23 @@ describe("POST /api/auth/login", () => {
   });
 });
 
+describe("cuerpos que no son un objeto", () => {
+  it("responden 400 con el mensaje en español, sin el texto de zod", async () => {
+    for (const send of [
+      () => request(app).post("/api/auth/login"),
+      () => request(app).post("/api/auth/login").send([]),
+      () => request(app).post("/api/auth/register").send(["a", "b"]),
+    ]) {
+      const response = await send();
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: "invalid_input",
+        fields: { form: "Los datos enviados no son válidos." },
+      });
+    }
+  });
+});
+
 describe("GET /api/auth/me", () => {
   async function me(token: string | undefined) {
     const call = request(app).get("/api/auth/me");

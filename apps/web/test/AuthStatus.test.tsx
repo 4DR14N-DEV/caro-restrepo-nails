@@ -68,6 +68,15 @@ describe("AuthStatus", () => {
     expect(screen.queryByRole("link", { name: "Administrar servicios" })).toBeNull();
   });
 
+  it("con sesión muestra el enlace a Mis citas", async () => {
+    mockApi({ me: json(200, { user: ana }) });
+    render(<AuthStatus />);
+
+    expect((await screen.findByRole("link", { name: "Mis citas" })).getAttribute("href")).toBe(
+      "/mis-citas",
+    );
+  });
+
   it("si la salida falla, avisa y mantiene la sesión a la vista", async () => {
     mockApi({ me: json(200, { user: ana }), logout: json(500, { error: "internal_error" }) });
     render(<AuthStatus />);

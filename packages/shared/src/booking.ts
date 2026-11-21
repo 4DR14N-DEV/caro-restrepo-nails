@@ -78,6 +78,29 @@ export interface BookingResult {
   caroWhatsapp: string | null;
 }
 
+// Estado de una cita en "Mis citas". `past`: agendada, ya pasó y Caro todavía no la marcó.
+export type AppointmentState = "upcoming" | "past" | "completed" | "no_show" | "cancelled";
+
+// Una cita de la clienta, con los servicios y precios del momento en que reservó.
+export interface MyAppointment {
+  id: string;
+  date: string;
+  time: string;
+  services: string[];
+  durationMinutes: number;
+  totalPriceCop: number;
+  state: AppointmentState;
+}
+
+export interface MyAppointments {
+  // Agendadas que todavía no empiezan, de la más cercana a la más lejana.
+  upcoming: MyAppointment[];
+  // El resto, de la más reciente a la más vieja.
+  history: MyAppointment[];
+}
+
+export const HISTORY_LIMIT = 20;
+
 // Días y horas escritos igual en todos lados, sin depender del idioma del navegador.
 const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MONTHS = [
