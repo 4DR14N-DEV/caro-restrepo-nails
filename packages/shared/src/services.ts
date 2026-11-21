@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { onlyKnownFields } from "./strict.js";
 
 // Servicios del catálogo, compartidos por la API y la web.
 // Los mensajes son textos de UI: el panel de Caro los muestra tal cual.
@@ -51,16 +52,19 @@ const serviceFields = {
     ),
 };
 
-export const serviceInputSchema = z.object(serviceFields);
+export const serviceInputSchema = z.strictObject(serviceFields, onlyKnownFields);
 
 // Editar cambia solo lo que llega; activar y desactivar también es una edición.
 export const serviceUpdateSchema = z
-  .object({
-    name: serviceFields.name.optional(),
-    priceCop: serviceFields.priceCop.optional(),
-    durationMinutes: serviceFields.durationMinutes.optional(),
-    active: z.boolean("Indica si el servicio está activo.").optional(),
-  })
+  .strictObject(
+    {
+      name: serviceFields.name.optional(),
+      priceCop: serviceFields.priceCop.optional(),
+      durationMinutes: serviceFields.durationMinutes.optional(),
+      active: z.boolean("Indica si el servicio está activo.").optional(),
+    },
+    onlyKnownFields,
+  )
   .refine((update) => Object.values(update).some((value) => value !== undefined), {
     message: "No hay cambios para guardar.",
   });

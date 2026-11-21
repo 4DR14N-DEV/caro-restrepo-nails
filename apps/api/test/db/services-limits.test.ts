@@ -232,16 +232,17 @@ describe("nombre único, ids y orden (S5)", () => {
     const [service] = await seedTwo();
     const before = await fingerprint();
 
-    for (const body of [{}, { sortOrder: 99 }, { id: "otro" }]) {
+    for (const [body, message] of [
+      [{}, "No hay cambios para guardar."],
+      [{ sortOrder: 99 }, "No se aceptan estos campos: sortOrder."],
+      [{ id: "otro" }, "No se aceptan estos campos: id."],
+    ] as const) {
       const response = await request(app)
         .patch(`/api/admin/services/${service?.id}`)
         .set("Cookie", cookie)
         .send(body);
       expect(response.status).toBe(400);
-      expect(response.body).toEqual({
-        error: "invalid_input",
-        fields: { form: "No hay cambios para guardar." },
-      });
+      expect(response.body).toEqual({ error: "invalid_input", fields: { form: message } });
     }
     expect(await fingerprint()).toBe(before);
   });

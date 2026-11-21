@@ -1,5 +1,7 @@
 import type {
   AdminService,
+  BookingRequest,
+  BookingResult,
   PublicService,
   PublicUser,
   ServiceData,
@@ -59,6 +61,13 @@ export const api = {
     call<{ service: AdminService }>("POST", "/api/admin/services", body),
   updateService: (id: string, body: ServiceUpdate) =>
     call<{ service: AdminService }>("PATCH", `/api/admin/services/${encodeURIComponent(id)}`, body),
+  bookingDays: () => call<{ days: string[] }>("GET", "/api/booking/days"),
+  bookingTimes: (date: string, serviceIds: readonly string[]) =>
+    call<{ times: string[] }>(
+      "GET",
+      `/api/booking/times?${new URLSearchParams({ date, services: serviceIds.join(",") })}`,
+    ),
+  book: (body: BookingRequest) => call<BookingResult>("POST", "/api/appointments", body),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.
@@ -71,6 +80,8 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
       return result.retryAfterSeconds === undefined
         ? "Demasiados intentos. Vuelve a intentarlo más tarde."
         : `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds)}.`;
+    case "busy":
+      return "Hay muchas reservas en este momento. Inténtalo de nuevo en unos segundos.";
     case "network":
       return "No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.";
     default:

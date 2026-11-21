@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
-  date,
   index,
   integer,
   pgEnum,
@@ -199,11 +198,6 @@ export const scheduleExceptions = pgTable(
     check("schedule_exceptions_order", sql`${t.startsAt} < ${t.endsAt}`),
   ],
 );
-
-export const holidays = pgTable("holidays", {
-  date: date("date").primaryKey(),
-  name: text("name").notNull(),
-});
 
 // Reglas de negocio configurables desde el panel. Siempre existe una sola fila (id = 1).
 export const settings = pgTable(

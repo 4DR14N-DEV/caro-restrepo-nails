@@ -1,25 +1,19 @@
-// Preguntas por consola que se cancelan si la entrada se cierra (Ctrl+D, o una entrada que
-// termina antes de tiempo), en vez de mostrar el error interno o quedarse esperando.
-// Un solo aviso de cierre sirve para todas las preguntas.
+// Preguntas por consola, respondidas línea por línea. Las líneas que llegan antes de
+// preguntar (una entrada por tubería con todas las respuestas juntas) quedan en espera
+// para la pregunta siguiente. Si la entrada se termina antes de responder (Ctrl+D, o una
+// entrada corta), se cancela en vez de quedarse esperando. Cualquier otro error de la
+// entrada se muestra tal cual.
 export function createAsk(
-  prompt: { once(event: "close", listener: () => void): unknown },
+  lines: AsyncIterable<string>,
+  write: (text: string) => void,
   cancel: () => never,
 ) {
-  let closed = false;
-  const closedPrompt = new Promise<null>((resolve) =>
-    prompt.once("close", () => {
-      closed = true;
-      resolve(null);
-    }),
-  );
+  // El iterador se crea ya, para no perder las líneas que lleguen antes de la primera pregunta.
+  const pending = lines[Symbol.asyncIterator]();
 
-  // Solo el cierre de la entrada cancela; cualquier otro error se muestra tal cual.
-  return async function ask(question: () => Promise<string>): Promise<string> {
-    if (closed) cancel();
-    const answer = await Promise.race([question(), closedPrompt]).catch((error: unknown) => {
-      if (closed) return null;
-      throw error;
-    });
-    return answer ?? cancel();
+  return async function ask(question: string): Promise<string> {
+    write(question);
+    const line = await pending.next();
+    return line.done ? cancel() : line.value;
   };
 }

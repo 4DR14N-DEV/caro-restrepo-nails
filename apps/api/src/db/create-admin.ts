@@ -19,27 +19,32 @@ const output = new Writable({
     callback();
   },
 });
-const prompt = createInterface({ input: process.stdin, output, terminal: true });
+// En una terminal, readline maneja el eco (para poder ocultar la contraseña); con una
+// entrada por tubería no hay eco que ocultar.
+const prompt = createInterface({ input: process.stdin, output, terminal: process.stdin.isTTY });
+
+const ask = createAsk(
+  prompt,
+  (text) => process.stdout.write(text),
+  () => {
+    muted = false;
+    console.error("\nCancelado: no se creó ninguna cuenta.");
+    process.exit(1);
+  },
+);
 
 async function askHidden(question: string): Promise<string> {
-  process.stdout.write(question);
   muted = true;
-  const answer = await prompt.question("");
+  const answer = await ask(question);
   muted = false;
   process.stdout.write("\n");
   return answer;
 }
 
-const ask = createAsk(prompt, () => {
-  muted = false;
-  console.error("\nCancelado: no se creó ninguna cuenta.");
-  process.exit(1);
-});
-
-const name = await ask(() => prompt.question("Nombre: "));
-const phone = await ask(() => prompt.question("Celular (10 dígitos): "));
-const password = await ask(() => askHidden("Contraseña (mínimo 8 caracteres): "));
-const confirmation = await ask(() => askHidden("Repite la contraseña: "));
+const name = await ask("Nombre: ");
+const phone = await ask("Celular (10 dígitos): ");
+const password = await askHidden("Contraseña (mínimo 8 caracteres): ");
+const confirmation = await askHidden("Repite la contraseña: ");
 prompt.close();
 
 if (password !== confirmation) {

@@ -12,17 +12,19 @@ Postgres (Supabase), definido con Drizzle en `apps/api/src/db/schema.ts`. Dinero
 | `appointment_services` | Servicios de cada cita            | `appointment_id`, `service_id`, copia de `service_name`, `price_cop`, `duration_minutes`                                                                                   |
 | `business_hours`       | Horario base                      | `weekday` (1 = lunes … 6 = sábado), `opens_at`, `closes_at`                                                                                                                |
 | `schedule_exceptions`  | Cambios puntuales                 | `kind` (`block`/`break`/`extra_open`), `starts_at`, `ends_at`, `reason`                                                                                                    |
-| `holidays`             | Festivos de Colombia              | `date`, `name`                                                                                                                                                             |
 | `settings`             | Reglas configurables (fila única) | `buffer_minutes`, `slot_step_minutes`, `booking_min_days`, `booking_max_months`, `cancel_min_hours`, `reschedule_min_days`                                                 |
 | `push_subscriptions`   | Notificaciones push               | `user_id`, `endpoint` (único), `p256dh`, `auth`                                                                                                                            |
 
 ## Garantías en la base de datos
 
 - **Sin superposición de citas**: `EXCLUDE USING gist (tstzrange(start_at, occupied_until) WITH &&) WHERE (status = 'scheduled')`. `occupied_until` = `end_at` + margen. Como hay una sola profesional, no hace falta `btree_gist`.
+- **Reservas de a una por día**: al reservar, la API toma un turno de la fecha (`pg_advisory_xact_lock`) y vuelve a calcular las horas dentro de la misma transacción. Dos reservas del mismo día no compiten: la segunda ve la primera (si el turno no se libera en 5 s, responde 503 `busy`). La restricción de exclusión queda como red de seguridad. Ojo: el turno es solo entre reservas; cuando Caro pueda cargar bloqueos desde el panel (RF13), esa escritura tiene que tomar el mismo turno.
 - **Coherencia de horas**: `start_at < end_at <= occupied_until`.
 - **Valores válidos**: precios ≥ 0, duraciones > 0, días de la semana entre 1 y 6.
 - **Copia de precios**: `appointment_services` guarda nombre, precio y duración del momento de la reserva; si un precio cambia, el historial no se altera.
 - **Settings de fila única**: `id = 1` forzado por un `CHECK`.
+
+Los festivos de Colombia no se guardan: se calculan en código (`apps/api/src/booking/holidays.ts`).
 
 ## Estados de una cita
 

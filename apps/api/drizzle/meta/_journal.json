@@ -36,6 +36,13 @@
       "when": 1795182638949,
       "tag": "0004_services_name_case_insensitive",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795189625821,
+      "tag": "0005_holidays_computed_in_code",
+      "breakpoints": true
     }
   ]
 }

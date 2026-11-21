@@ -2,6 +2,7 @@ import { loginSchema } from "@caro/shared";
 import { useState, type SubmitEvent } from "react";
 import { api, formErrorMessage } from "../lib/api";
 import { fieldErrors } from "../lib/forms";
+import { nextPath } from "../lib/next";
 import { FormShell } from "./FormShell";
 import { TextField } from "./TextField";
 
@@ -28,7 +29,7 @@ export function LoginForm() {
     setSubmitting(false);
 
     if (result.ok) {
-      window.location.assign("/");
+      window.location.assign(nextPath(window.location.search));
       return;
     }
     setFields(result.fields ?? {});

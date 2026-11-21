@@ -1,5 +1,6 @@
 ---
 import { RegisterForm } from "../components/RegisterForm";
+import KeepNext from "../components/KeepNext.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -15,7 +16,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     </div>
     <RegisterForm client:load />
     <p class="text-center text-sm text-neutral-600">
-      ¿Ya tienes cuenta? <a href="/ingreso" class="font-medium underline">Ingresa</a>
+      ¿Ya tienes cuenta? <a href="/ingreso" data-keep-next class="font-medium underline">Ingresa</a>
     </p>
   </main>
+  <KeepNext />
 </BaseLayout>

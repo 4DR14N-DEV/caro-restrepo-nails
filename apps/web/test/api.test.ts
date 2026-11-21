@@ -73,6 +73,12 @@ describe("formErrorMessage", () => {
     );
   });
 
+  it("si la agenda está ocupada guardando otra reserva, pide reintentar en unos segundos", () => {
+    expect(formErrorMessage({ ok: false, status: 503, error: "busy" })).toBe(
+      "Hay muchas reservas en este momento. Inténtalo de nuevo en unos segundos.",
+    );
+  });
+
   it("redondea los minutos de espera hacia arriba y usa singular o plural", () => {
     const blocked = { ok: false as const, status: 429, error: "too_many_attempts" };
     expect(formErrorMessage({ ...blocked, retryAfterSeconds: 61 })).toBe(
