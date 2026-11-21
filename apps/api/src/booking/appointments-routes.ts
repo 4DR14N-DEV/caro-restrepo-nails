@@ -190,7 +190,8 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     const [appointment] = await withServices(db, [row], current, rules);
     if (!appointment) throw new Error("No se leyó la cita cancelada.");
     const result: AppointmentChange = { appointment, caroWhatsapp };
-    res.json(result);
+    // Datos personales, como en la lista: que no queden guardados en ningún lado.
+    res.set("Cache-Control", "no-store").json(result);
   });
 
   // Reservar (RF06): la cita queda confirmada al instante si la hora está libre.

@@ -5,11 +5,12 @@ import type { createTestDatabase } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
 
-// Valores que deja una cancelación, para insertar citas ya canceladas.
+// Valores que deja una cancelación, para insertar citas ya canceladas. La fecha es fija para
+// que no dependa del reloj real (los tests fijan el de la app).
 export const cancelledValues = {
   status: "cancelled" as const,
   cancelledBy: "client" as const,
-  cancelledAt: new Date(),
+  cancelledAt: new Date("2026-11-19T12:00:00Z"),
 };
 
 // Datos de prueba de citas, compartidos por los tests que listan, cancelan y reprograman.
