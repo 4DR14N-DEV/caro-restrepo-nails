@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminAgenda } from "../src/components/AdminAgenda";
@@ -318,4 +318,21 @@ describe("AdminAgenda: semana y mes", () => {
     await userEvent.click(screen.getByRole("button", { name: "martes 24 de noviembre: 1 cita" }));
     expect(await screen.findByRole("heading", { name: "martes 24 de noviembre" })).toBeTruthy();
   });
+});
+
+describe("AdminAgenda: volver a la misma fecha", () => {
+  it.each([["Hoy"], ["Día"]])(
+    'tocar "%s" estando en hoy no deja la agenda cargando',
+    async (name) => {
+      const fetchMock = mockApi({ "GET /api/admin/agenda": () => json(200, { appointments: [] }) });
+      render(<AdminAgenda today={TODAY} />);
+      await screen.findByText("No hay citas este día.");
+
+      await userEvent.click(screen.getByRole("button", { name }));
+
+      await waitFor(() => expect(screen.queryByText("Cargando la agenda…")).toBeNull());
+      expect(screen.getByText("No hay citas este día.")).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalled();
+    },
+  );
 });

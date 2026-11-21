@@ -90,9 +90,12 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
     };
   }, [from, to, withCancelled, reload]);
 
-  // Ir a otra fecha o vista muestra "Cargando…" y limpia los avisos.
+  // Ir a otra fecha o vista limpia los avisos. Solo muestra "Cargando…" si cambian las fechas:
+  // si son las mismas (por ejemplo, "Hoy" estando en hoy), no se vuelve a pedir nada y la
+  // agenda quedaría cargando para siempre.
   function go(nextView: View, nextAnchor: string) {
-    setLoad({ state: "loading" });
+    const next = rangeOf(nextView, nextAnchor);
+    if (next.from !== from || next.to !== to) setLoad({ state: "loading" });
     setNotice(undefined);
     setCancelled(undefined);
     setView(nextView);
