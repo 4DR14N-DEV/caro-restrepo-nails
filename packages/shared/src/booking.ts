@@ -194,6 +194,28 @@ export function bookingMessage(booking: {
   return `Hola Caro, soy ${booking.name}. Reservé ${joinNames(booking.services)} el ${formatWhen(booking.date, booking.time)}`;
 }
 
+// "Hola Caro, soy {nombre}. Cancelé mi cita de {servicios} del {día} a las {hora}"
+export function cancelMessage(appointment: {
+  name: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+}): string {
+  return `Hola Caro, soy ${appointment.name}. Cancelé mi cita de ${joinNames(appointment.services)} del ${formatWhen(appointment.date, appointment.time)}`;
+}
+
+// "Hola Caro, soy {nombre}. Moví mi cita de {servicios} del {día} a las {hora} al {día} a las {hora}"
+export function rescheduleMessage(change: {
+  name: string;
+  services: readonly string[];
+  from: { date: string; time: string };
+  to: { date: string; time: string };
+}): string {
+  const from = formatWhen(change.from.date, change.from.time);
+  const to = formatWhen(change.to.date, change.to.time);
+  return `Hola Caro, soy ${change.name}. Moví mi cita de ${joinNames(change.services)} del ${from} al ${to}`;
+}
+
 // Enlace de WhatsApp con el mensaje ya escrito. El número va sin "+".
 export function whatsappLink(phone: string, text: string): string {
   return `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent(text)}`;
