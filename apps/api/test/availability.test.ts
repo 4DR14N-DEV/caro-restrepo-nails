@@ -97,6 +97,22 @@ describe("availableTimes", () => {
     expect(times).toContain("14:00");
   });
 
+  it("después de un descanso que termina a una hora no redonda, ofrece ese fin y vuelve a la grilla", () => {
+    const withBreak = day({
+      exceptions: [{ kind: "break", startsAt: at("13:00"), endsAt: at("15:45") }],
+    });
+    const times = availableTimes(withBreak, 60, rules);
+
+    expect(times.filter((time) => time >= "15:00")).toEqual([
+      "15:45",
+      "16:00",
+      "16:30",
+      "17:00",
+      "17:30",
+      "18:00",
+    ]);
+  });
+
   it("un bloqueo de todo el día no deja horas", () => {
     const blocked = day({
       exceptions: [{ kind: "block", startsAt: at("00:00"), endsAt: at("00:00", "2026-11-24") }],

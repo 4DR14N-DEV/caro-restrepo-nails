@@ -98,8 +98,8 @@ export function openIntervals(day: DaySchedule): Interval[] {
 }
 
 // Horas de inicio ("HH:MM", hora de Bogotá) en las que entra un bloque de `durationMinutes`:
-// cada `slotStepMinutes` desde que abre cada tramo, más la hora justo después de cada cita
-// (fin + margen). El bloque tiene que terminar dentro del tramo; el margen no se exige al
+// cada `slotStepMinutes` en la grilla del día (9:00, 9:30…), más el inicio de cada tramo y la
+// hora justo después de cada cita (fin + margen). El bloque tiene que terminar dentro del tramo; el margen no se exige al
 // cierre ni antes de un bloqueo o descanso, pero sí antes de otra cita.
 export function availableTimes(day: DaySchedule, durationMinutes: number, rules: Rules): string[] {
   const duration = durationMinutes * MINUTE;
@@ -110,11 +110,17 @@ export function availableTimes(day: DaySchedule, durationMinutes: number, rules:
     a.occupiedUntil.getTime(),
   ]);
   const afterAppointments = booked.map(([, occupiedUntil]) => occupiedUntil);
+  // La grilla cuenta desde la medianoche del día: con pasos de 30 minutos queda en las horas
+  // en punto y las y media, aunque un tramo abra a una hora no redonda.
+  const midnight = bogotaInstant(day.date, "00:00").getTime();
 
   const starts = new Set<number>();
   for (const [open, close] of openSpans(day)) {
-    const candidates = [...afterAppointments];
-    for (let start = open; start < close; start += step) candidates.push(start);
+    // El inicio de cada tramo (la apertura, o el fin de un bloqueo o descanso) también se
+    // ofrece, como la hora justo después de una cita.
+    const candidates = [...afterAppointments, open];
+    const firstOnGrid = midnight + Math.ceil((open - midnight) / step) * step;
+    for (let start = firstOnGrid; start < close; start += step) candidates.push(start);
 
     for (const start of candidates) {
       const fits = start >= open && start + duration <= close;

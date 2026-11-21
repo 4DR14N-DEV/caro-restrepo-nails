@@ -10,9 +10,11 @@ import {
 import { availableTimes, bookingWindow, type DaySchedule } from "./availability.js";
 import { addDays, bogotaDate, bogotaInstant, isoWeekday } from "./dates.js";
 
-// Lee de la base lo que el motor de disponibilidad necesita.
+// Lee de la base lo que el motor de disponibilidad necesita. Acepta la base o una
+// transacción (la reserva calcula las horas dentro de la suya).
+type Reader = Pick<Database, "select">;
 
-export async function loadSettings(db: Database) {
+export async function loadSettings(db: Reader) {
   const [row] = await db.select().from(settings).where(eq(settings.id, 1));
   if (!row) throw new Error("Falta la fila de settings: corre pnpm db:seed.");
   return row;
@@ -20,7 +22,7 @@ export async function loadSettings(db: Database) {
 
 // Los días de `first` a `last` (fechas de Bogotá, incluidas), cada uno con su horario
 // base, las excepciones y las citas agendadas que lo tocan.
-export async function loadDays(db: Database, first: string, last: string): Promise<DaySchedule[]> {
+export async function loadDays(db: Reader, first: string, last: string): Promise<DaySchedule[]> {
   const rangeStart = bogotaInstant(first, "00:00");
   const rangeEnd = bogotaInstant(addDays(last, 1), "00:00");
 
@@ -81,7 +83,7 @@ export async function loadActiveServices(db: Database, ids: readonly string[]) {
 // Horas que el motor ofrece ahora para un día y una duración. Mostrar las horas y
 // reservar usan esta misma función: solo se puede reservar una hora que se ofrece.
 export async function offeredTimes(
-  db: Database,
+  db: Reader,
   now: () => Date,
   date: string,
   durationMinutes: number,

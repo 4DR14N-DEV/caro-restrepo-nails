@@ -55,21 +55,24 @@ async function serviceId(name: string): Promise<string> {
   return service.id;
 }
 
-// Espera a que el guardado de la API quede bloqueado por una cita sin confirmar de otra
+// Espera a que la consulta de la API que empieza con `query` quede bloqueada por otra
 // conexión. Con un tope: si nunca se bloquea, falla con un mensaje claro en vez de colgarse.
-async function waitForBlockedInsert() {
+async function waitForBlocked(query: string) {
   let blocked = false;
   for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
     const { rows } = await database.pool.query(
       `SELECT count(*)::int AS n FROM pg_stat_activity
        WHERE wait_event_type = 'Lock' AND datname = current_database()
-         AND query ILIKE 'insert into "appointments"%'`,
+         AND query ILIKE $1`,
+      [`${query}%`],
     );
     blocked = rows[0].n > 0;
     if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  expect(blocked, "el guardado de Ana tenía que esperar a la otra cita").toBe(true);
+  expect(blocked, `la consulta "${query}" de la API tenía que esperar`).toBe(true);
 }
+
+const waitForBlockedInsert = () => waitForBlocked('insert into "appointments"');
 
 const book = (cookie: string, body: object) =>
   request(app).post("/api/appointments").set("Cookie", cookie).send(body);
@@ -280,6 +283,36 @@ describe("POST /api/appointments", () => {
     }
     expect(await database.db.select().from(appointments)).toEqual([]);
     expect(await database.db.select().from(appointmentServices)).toEqual([]);
+  });
+
+  it("las reservas del mismo día se guardan de a una y la segunda vuelve a calcular las horas", async () => {
+    const { cookie } = await signedIn("client", "+573001234567");
+    const manos = await serviceId("Semipermanente manos");
+
+    // Otra conexión tiene el turno del lunes. Mientras la reserva espera, Caro bloquea de
+    // 10:00 a 11:00: la base no lo impide (un bloqueo no es una cita), solo el cálculo hecho
+    // dentro del turno lo ve.
+    const other = await database.pool.connect();
+    try {
+      await other.query("BEGIN");
+      await other.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`booking:${MONDAY}`]);
+      const pending = book(cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" }).then(
+        (response) => response,
+      );
+      await waitForBlocked("select pg_advisory_xact_lock");
+      await other.query(
+        `INSERT INTO schedule_exceptions (kind, starts_at, ends_at)
+         VALUES ('block', '2026-11-23T15:00:00Z', '2026-11-23T16:00:00Z')`,
+      );
+      await other.query("COMMIT");
+
+      const response = await pending;
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe("slot_taken");
+    } finally {
+      other.release();
+    }
+    expect(await database.db.select().from(appointments)).toEqual([]);
   });
 
   it("responde 409 si algún servicio ya no está disponible", async () => {

@@ -1,5 +1,5 @@
 import { bookingRequestSchema, summarize, type BookingResult } from "@caro/shared";
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
@@ -37,22 +37,26 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     if (!chosen) return serviceUnavailable(res);
     const { durationMinutes, priceCop } = summarize(chosen);
 
-    // La disponibilidad se vuelve a calcular aquí: solo vale una hora que el motor ofrece
-    // ahora mismo, no la que la página mostró hace un rato.
-    const { rules, times } = await offeredTimes(db, now, date, durationMinutes);
-    if (!times.includes(time)) return slotTaken(res);
-
     // Se busca antes de guardar: después del commit, un fallo de esta lectura daría un
     // error a una clienta cuya cita sí quedó guardada.
     const caroWhatsapp = await caroPhone(db);
 
-    const startAt = bogotaInstant(date, time);
-    const endAt = new Date(startAt.getTime() + durationMinutes * MINUTE);
-    const occupiedUntil = new Date(endAt.getTime() + rules.bufferMinutes * MINUTE);
-
-    let id: string;
+    let id: string | undefined;
     try {
       id = await db.transaction(async (tx) => {
+        // Turno del día: las reservas de una misma fecha se guardan de a una. La segunda
+        // espera a que la primera termine y calcula las horas ya con esa cita, así que no
+        // hay carreras ni interbloqueos entre reservas.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking:${date}`}))`);
+
+        // La disponibilidad se vuelve a calcular aquí, dentro del turno: solo vale una hora
+        // que el motor ofrece ahora mismo, no la que la página mostró hace un rato.
+        const { rules, times } = await offeredTimes(tx, now, date, durationMinutes);
+        if (!times.includes(time)) return undefined;
+
+        const startAt = bogotaInstant(date, time);
+        const endAt = new Date(startAt.getTime() + durationMinutes * MINUTE);
+        const occupiedUntil = new Date(endAt.getTime() + rules.bufferMinutes * MINUTE);
         const [appointment] = await tx
           .insert(appointments)
           .values({
@@ -78,14 +82,15 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         return appointment.id;
       });
     } catch (error) {
-      // Otra reserva tomó la hora entre el cálculo y el guardado: la restricción de
-      // exclusión de la base lo impide (RF21). Si las dos se esperaban una a la otra,
-      // Postgres corta una con un interbloqueo: para la clienta es lo mismo.
+      // Red de seguridad por si algo escribe citas sin el turno: la restricción de exclusión
+      // de la base impide la superposición (RF21) y, si dos escrituras se esperaban una a la
+      // otra, Postgres corta una con un interbloqueo. Para la clienta es lo mismo.
       if (hasPgCode(error, EXCLUSION_VIOLATION) || hasPgCode(error, DEADLOCK)) {
         return slotTaken(res);
       }
       throw error;
     }
+    if (!id) return slotTaken(res);
 
     const result: BookingResult = {
       appointment: {
