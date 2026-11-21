@@ -157,6 +157,11 @@ export function formatDay(date: string): string {
   return `${weekday} ${day} de ${month}`;
 }
 
+// "2026-11-23" → "noviembre de 2026"
+export function formatMonth(date: string): string {
+  return `${dateParts(date).month} de ${date.slice(0, 4)}`;
+}
+
 // "2026-11-23" → "lun 23 nov"
 export function formatDayShort(date: string): string {
   const { weekday, day, month } = dateParts(date);
@@ -214,6 +219,30 @@ export function rescheduleMessage(change: {
   const from = formatWhen(change.from.date, change.from.time);
   const to = formatWhen(change.to.date, change.to.time);
   return `Hola Caro, soy ${change.name}. Moví mi cita de ${joinNames(change.services)} del ${from} al ${to}`;
+}
+
+// Mensajes de Caro a la clienta. La hora termina en "a. m." o "p. m.": ese punto cierra la
+// oración, sin agregar otro.
+
+// "Hola {nombre}, soy Caro. Tuve que cancelar tu cita de {servicios} del {día} a las {hora}.
+// Escríbeme para buscar otro horario."
+export function adminCancelMessage(appointment: {
+  clientName: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+}): string {
+  return `Hola ${appointment.clientName}, soy Caro. Tuve que cancelar tu cita de ${joinNames(appointment.services)} del ${formatWhen(appointment.date, appointment.time)} Escríbeme para buscar otro horario.`;
+}
+
+// "Hola {nombre}, te recuerdo tu cita de {servicios} el {día} a las {hora}. ¡Te espero!"
+export function reminderMessage(appointment: {
+  clientName: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+}): string {
+  return `Hola ${appointment.clientName}, te recuerdo tu cita de ${joinNames(appointment.services)} el ${formatWhen(appointment.date, appointment.time)} ¡Te espero!`;
 }
 
 // Enlace de WhatsApp con el mensaje ya escrito. El número va sin "+".

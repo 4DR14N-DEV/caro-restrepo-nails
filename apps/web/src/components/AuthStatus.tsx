@@ -46,6 +46,14 @@ export function AuthStatus() {
             Administrar servicios
           </a>
         )}
+        {user.role === "admin" && (
+          <a
+            href="/admin/agenda"
+            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          >
+            Ver agenda
+          </a>
+        )}
         <button
           type="button"
           onClick={logout}
