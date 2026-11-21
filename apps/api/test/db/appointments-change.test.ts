@@ -134,6 +134,18 @@ describe("POST /api/appointments/:id/cancel", () => {
     expect(await stored(id)).toMatchObject({ status: "cancelled", cancelledBy: "admin" });
   });
 
+  it("aunque el plazo de cancelación sea 0, una cita que ya empezó no se cancela", async () => {
+    await database.pool.query("UPDATE settings SET cancel_min_hours = 0");
+    const { userId, cookie } = await signedIn("+573001234567");
+    const now10 = await appointment(userId, "2026-11-20T15:00:00Z", ["Retiro"]); // empieza ya
+
+    const response = await cancel(cookie, now10);
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual(tooLate);
+    expect((await stored(now10))?.status).toBe("scheduled");
+  });
+
   it("una cita que ya no está agendada no se vuelve a cancelar", async () => {
     const { userId, cookie } = await signedIn("+573001234567");
     const cancelled = await appointment(

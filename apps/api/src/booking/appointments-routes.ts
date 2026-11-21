@@ -215,6 +215,8 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
           eq(appointments.id, id),
           eq(appointments.clientId, user.id),
           eq(appointments.status, "scheduled"),
+          // Que no haya empezado, aunque el plazo de cancelación sea 0 (igual que `canCancel`).
+          gt(appointments.startAt, current),
           gte(appointments.startAt, cancelDeadline(current, rules)),
         ),
       )
