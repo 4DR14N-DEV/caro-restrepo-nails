@@ -37,7 +37,7 @@ export function createApp({
   app.use("/api/auth", authRouter(db, clientIp));
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
-  app.use("/api/admin", adminAgendaRouter(db, now));
+  app.use("/api/admin/agenda", adminAgendaRouter(db, now));
   app.use("/api/booking", bookingRouter(db, now));
   app.use("/api/appointments", appointmentsRouter(db, now));
 

@@ -107,6 +107,9 @@ describe("GET /api/admin/agenda", () => {
     const hidden = await agenda(caro.cookie, range);
     expect(hidden.body.appointments.map((a: { id: string }) => a.id)).toEqual([kept]);
 
+    const off = await agenda(caro.cookie, { ...range, cancelled: "0" });
+    expect(off.body.appointments.map((a: { id: string }) => a.id)).toEqual([kept]);
+
     const shown = await agenda(caro.cookie, { ...range, cancelled: "1" });
     expect(
       shown.body.appointments.map((a: { id: string; status: string }) => [a.id, a.status]),
@@ -165,7 +168,14 @@ describe("GET /api/admin/agenda", () => {
     const caro = await asCaro();
     for (const [query, fields] of [
       [{ to: "2026-11-23" }, { from: "Elige una fecha válida." }],
-      [{ from: "2026-11-24", to: "2026-11-23" }, { to: "Elige un rango de hasta 42 días." }],
+      [
+        { from: "2026-11-24", to: "2026-11-23" },
+        { to: "La fecha final no puede ser anterior a la inicial." },
+      ],
+      [
+        { from: "2026-11-23", to: "2026-11-23", cancelled: "si" },
+        { cancelled: "Usa 0 o 1 para mostrar las canceladas." },
+      ],
       [{ from: "2026-11-01", to: "2026-12-13" }, { to: "Elige un rango de hasta 42 días." }],
     ] as const) {
       const response = await agenda(caro.cookie, query);
@@ -174,5 +184,43 @@ describe("GET /api/admin/agenda", () => {
     }
     // 42 días justos sí.
     expect((await agenda(caro.cookie, { from: "2026-11-01", to: "2026-12-12" })).status).toBe(200);
+  });
+
+  it("se puede marcar justo cuando empieza; dos citas a la misma hora salen en orden fijo", async () => {
+    const caro = await asCaro();
+    const ana = await signedIn("+573001234567");
+    // Empieza exactamente ahora (10:00); la otra, cancelada, a la misma hora.
+    const atNow = await appointment(ana.userId, "2026-11-23T15:00:00Z", ["Retiro"]);
+    const twin = await appointment(ana.userId, "2026-11-23T15:00:00Z", ["Retiro"], cancelledValues);
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { body } = await agenda(caro.cookie, {
+        from: "2026-11-23",
+        to: "2026-11-23",
+        cancelled: "1",
+      });
+      expect(body.appointments.map((a: { id: string }) => a.id)).toEqual([atNow, twin].sort());
+      expect(body.appointments.find((a: { id: string }) => a.id === atNow).canMark).toBe(true);
+    }
+  });
+
+  it("una cita sin servicios guardados sale con la lista vacía", async () => {
+    const caro = await asCaro();
+    const ana = await signedIn("+573001234567");
+    await database.pool.query(
+      `INSERT INTO appointments (client_id, start_at, end_at, occupied_until, total_price_cop, created_by)
+       VALUES ($1, '2026-11-23T15:00:00Z', '2026-11-23T15:30:00Z', '2026-11-23T15:40:00Z', 0, 'admin')`,
+      [ana.userId],
+    );
+
+    const { body } = await agenda(caro.cookie, { from: "2026-11-23", to: "2026-11-23" });
+
+    expect(body.appointments[0].services).toEqual([]);
+  });
+
+  it("una ruta de admin que no existe sigue respondiendo 404", async () => {
+    const response = await request(app).get("/api/admin/no-existe");
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "not_found" });
   });
 });

@@ -48,10 +48,11 @@ export function adminAgendaRouter(db: Database, now: () => Date): Router {
   const router = Router();
   router.use(requireAdmin(db));
 
-  router.get("/agenda", async (req, res) => {
+  router.get("/", async (req, res) => {
     const parsed = agendaQuerySchema.safeParse(req.query);
     if (!parsed.success) return invalidInput(res, parsed.error);
-    const { from, to, cancelled } = parsed.data;
+    const { from, to } = parsed.data;
+    const withCancelled = parsed.data.cancelled === "1";
 
     const rows = await db
       .select(agendaColumns)
@@ -61,7 +62,7 @@ export function adminAgendaRouter(db: Database, now: () => Date): Router {
         and(
           gte(appointments.startAt, bogotaInstant(from, "00:00")),
           lt(appointments.startAt, bogotaInstant(addDays(to, 1), "00:00")),
-          cancelled ? undefined : ne(appointments.status, "cancelled"),
+          withCancelled ? undefined : ne(appointments.status, "cancelled"),
         ),
       )
       .orderBy(asc(appointments.startAt), asc(appointments.id));
