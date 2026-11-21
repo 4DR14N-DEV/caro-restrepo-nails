@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   formatDuration,
   formatPrice,
@@ -14,8 +15,14 @@ const STATE_LABELS: Record<AppointmentState, string> = {
   cancelled: "Cancelada",
 };
 
+interface Props {
+  appointment: MyAppointment;
+  // Lo que la clienta puede hacer con la cita (cancelar, reprogramar), debajo de los datos.
+  children?: ReactNode;
+}
+
 // Una cita en "Mis citas": cuándo, qué servicios, cuánto dura, cuánto cuesta y su estado.
-export function AppointmentCard({ appointment }: { appointment: MyAppointment }) {
+export function AppointmentCard({ appointment, children }: Props) {
   return (
     <li className="flex flex-col gap-1 rounded-xl border border-neutral-300 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -28,6 +35,7 @@ export function AppointmentCard({ appointment }: { appointment: MyAppointment })
       <p className="text-sm text-neutral-600">
         {formatDuration(appointment.durationMinutes)} · {formatPrice(appointment.totalPriceCop)}
       </p>
+      {children}
     </li>
   );
 }

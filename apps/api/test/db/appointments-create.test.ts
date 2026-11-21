@@ -11,6 +11,7 @@ import {
   users,
 } from "../../src/db/schema.js";
 import { seed } from "../../src/db/seed-data.js";
+import { appointmentHelpers } from "./appointment-helpers.js";
 import { createTestDatabase } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
@@ -55,23 +56,7 @@ async function serviceId(name: string): Promise<string> {
   return service.id;
 }
 
-// Espera a que la consulta de la API que empieza con `query` quede bloqueada por otra
-// conexión. Con un tope: si nunca se bloquea, falla con un mensaje claro en vez de colgarse.
-async function waitForBlocked(query: string) {
-  let blocked = false;
-  for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
-    const { rows } = await database.pool.query(
-      `SELECT count(*)::int AS n FROM pg_stat_activity
-       WHERE wait_event_type = 'Lock' AND datname = current_database()
-         AND query ILIKE $1`,
-      [`${query}%`],
-    );
-    blocked = rows[0].n > 0;
-    if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  expect(blocked, `la consulta "${query}" de la API tenía que esperar`).toBe(true);
-}
-
+const { waitForBlocked } = appointmentHelpers(() => database);
 const waitForBlockedInsert = () => waitForBlocked('insert into "appointments"');
 
 const book = (cookie: string, body: object) =>
