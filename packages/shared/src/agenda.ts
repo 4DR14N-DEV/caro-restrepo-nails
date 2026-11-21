@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { bookingDateSchema, formatTime } from "./booking.js";
+import { bookingDateSchema, formatTime, isUuid, serviceIdsSchema } from "./booking.js";
 import { onlyKnownFields } from "./strict.js";
 
 // Agenda de Caro (RF10, RF12), compartida por la API y el panel.
@@ -171,3 +171,33 @@ export function describeException(exception: AgendaException): string {
   if (exception.allDay) return "Día bloqueado";
   return `${EXCEPTION_NAMES[exception.kind]} ${formatRange(exception.from, exception.to)}`;
 }
+
+// Citas que agenda Caro a nombre de una clienta (RF11): sin la ventana ni el horario de las
+// clientas, en pasos de 15 minutos. Editar manda los mismos campos.
+const clientMessage = "Elige una clienta.";
+export const adminAppointmentRequestSchema = z.strictObject(
+  {
+    clientId: z
+      .string(clientMessage)
+      .refine(isUuid, clientMessage)
+      .transform((id) => id.toLowerCase()),
+    serviceIds: serviceIdsSchema,
+    date: bookingDateSchema,
+    time: quarterTime("Elige la hora."),
+  },
+  onlyKnownFields,
+);
+
+export type AdminAppointmentRequest = z.output<typeof adminAppointmentRequestSchema>;
+
+// Una clienta en la búsqueda del panel.
+export interface ClientSummary {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+export const slotClashMessage = "Esa hora choca con otra cita.";
+export const pastTimeMessage = "Esa hora ya pasó.";
+export const clientUnavailableMessage = "Esa clienta ya no está disponible.";
+export const notEditableMessage = "Solo se puede editar una cita agendada.";

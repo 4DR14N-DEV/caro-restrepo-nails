@@ -55,7 +55,11 @@ function toAgenda(row: AgendaRow, services: string[], current: Date): AgendaAppo
 }
 
 // Las citas de la agenda que cumplen `where`, en orden de hora, listas para mostrar.
-async function loadAgenda(db: Pick<Database, "select">, where: SQL | undefined, current: Date) {
+export async function loadAgenda(
+  db: Pick<Database, "select">,
+  where: SQL | undefined,
+  current: Date,
+) {
   const rows = await db
     .select(agendaColumns)
     .from(appointments)
