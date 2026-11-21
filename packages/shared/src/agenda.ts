@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bookingDateSchema } from "./booking.js";
+import { onlyKnownFields } from "./strict.js";
 
 // Agenda de Caro (RF10, RF12), compartida por la API y el panel.
 
@@ -48,3 +49,24 @@ export const agendaQuerySchema = z
     message: `Elige un rango de hasta ${AGENDA_MAX_DAYS} días.`,
     path: ["to"],
   });
+
+// Marcar una cita (RF12). "Agendada" no se elige: es el estado de partida.
+export const appointmentStatusRequestSchema = z.strictObject(
+  {
+    status: z.enum(
+      ["completed", "no_show", "cancelled"],
+      "Elige completada, no asistió o cancelada.",
+    ),
+  },
+  onlyKnownFields,
+);
+
+export type MarkedStatus = z.output<typeof appointmentStatusRequestSchema>["status"];
+
+export interface AgendaChange {
+  appointment: AgendaAppointment;
+}
+
+export const notStartedMessage = "Solo puedes marcarla cuando la cita ya empezó.";
+export const cancelledIsFinalMessage = "Esta cita está cancelada y no se puede cambiar.";
+export const onlyScheduledCancelMessage = "Solo se puede cancelar una cita agendada.";
