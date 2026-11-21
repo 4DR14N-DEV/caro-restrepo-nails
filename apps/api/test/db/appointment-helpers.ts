@@ -17,10 +17,10 @@ export const cancelledValues = {
 // Datos de prueba de citas, compartidos por los tests que listan, cancelan y reprograman.
 // Recibe la base como función porque se crea en `beforeAll`, después de armar los ayudantes.
 export function appointmentHelpers(database: () => TestDatabase) {
-  async function signedIn(phone: string, name = "Ana María") {
+  async function signedIn(phone: string, name = "Ana María", role: "client" | "admin" = "client") {
     const [user] = await database()
       .db.insert(users)
-      .values({ name, phone, passwordHash: "hash-de-prueba", consentAcceptedAt: new Date() })
+      .values({ name, phone, passwordHash: "hash-de-prueba", role, consentAcceptedAt: new Date() })
       .returning({ id: users.id });
     if (!user) throw new Error("No se creó la cuenta de prueba.");
     return { userId: user.id, cookie: `session=${await createSession(database().db, user.id)}` };

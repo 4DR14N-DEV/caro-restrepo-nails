@@ -13,7 +13,7 @@ import {
   type MyAppointment,
   type MyAppointments,
 } from "@caro/shared";
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
@@ -22,6 +22,7 @@ import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
 import { serviceUnavailable, slotTaken } from "./responses.js";
+import { serviceNamesByAppointment } from "./service-copies.js";
 import { loadActiveServices, loadSettings, offeredTimes } from "./schedule.js";
 
 const HOUR = 60 * MINUTE;
@@ -115,21 +116,10 @@ async function withServices(
   current: Date,
   rules: Rules,
 ): Promise<MyAppointment[]> {
-  const copies = rows.length
-    ? await db
-        .select({
-          appointmentId: appointmentServices.appointmentId,
-          name: appointmentServices.serviceName,
-        })
-        .from(appointmentServices)
-        .where(
-          inArray(
-            appointmentServices.appointmentId,
-            rows.map((row) => row.id),
-          ),
-        )
-        .orderBy(asc(appointmentServices.serviceName))
-    : [];
+  const names = await serviceNamesByAppointment(
+    db,
+    rows.map((row) => row.id),
+  );
   return rows.map((row) => {
     const state: AppointmentState =
       row.status === "scheduled"
@@ -141,7 +131,7 @@ async function withServices(
       id: row.id,
       date: bogotaDate(row.startAt),
       time: bogotaTime(row.startAt),
-      services: copies.filter((copy) => copy.appointmentId === row.id).map((copy) => copy.name),
+      services: names.get(row.id) ?? [],
       durationMinutes: minutesOf(row),
       totalPriceCop: row.totalPriceCop,
       state,
