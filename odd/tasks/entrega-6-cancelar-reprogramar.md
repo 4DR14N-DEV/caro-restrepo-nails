@@ -1,0 +1,31 @@
+Objetivo: entrega 6 de Caro Restrepo Nails: la clienta cancela (RF08) y reprograma (RF09) sus citas.
+Rama: `feat/entrega-6-cancelar-reprogramar` · Estrategia de entrega: ask-on-risk (un PR, como las anteriores) · Runner de tests: Vitest (pnpm).
+
+## Specs
+
+- S1 — RF08: "Cancelar hasta 2 horas antes de la cita." (L2 #1) "`POST /api/appointments/:id/cancel`, solo citas propias y agendadas, hasta 2 horas antes (el valor de `settings`). Más tarde: 409 con "Ya no se puede cancelar esta cita. Escríbele a Caro por WhatsApp." La cita queda `cancelled`, con quién y cuándo."
+- S2 — RF09: "Reprogramar si faltan 2 días o más." Regla de negocio: "Si faltan 2 días o más; el nuevo horario cumple la ventana de reserva". (L2 #2) "`PATCH /api/appointments/:id` con el día y la hora nuevos. Se mueve **la misma cita**, con los mismos servicios y precios; no se crea otra. Permitido si faltan 2 días o más, y la hora nueva tiene que cumplir la ventana de reserva."
+- S3 — (L2 #3) "Al calcular las horas libres para mover una cita, su propio horario no cuenta como ocupado. Si no, la clienta no podría dejarla donde está ni moverla media hora."
+- S4 — (L2 #4) "Mover una cita toma el turno del día viejo y el del nuevo, siempre en el mismo orden, para que no haya interbloqueos."
+- S5 — (L2 #5) "Cada cita próxima de `/mis-citas` muestra "Reprogramar" y "Cancelar" solo cuando se permiten. Si ya no se puede, en lugar del botón va una línea: "Para cambios, escríbele a Caro.""
+- S6 — (L2 #6) "Un paso dentro de la página ("¿Seguro que quieres cancelar esta cita?" con "Sí, cancelar" y "No"), no el cartel del navegador, que en móvil se ve mal y no se puede probar."
+- S7 — (L2 #7) "Después de cancelar o reprogramar aparece "Avisar a Caro por WhatsApp" con el mensaje ya escrito, igual que al reservar."
+- S8 — (L2 #8) "Mismos días y horas que al reservar, con la duración de la cita. No se cambian los servicios: para eso se cancela y se reserva de nuevo."
+- S9 — (L2 #9) "El pendiente de pulido 2 queda como está: los requisitos dicen "Citas activas por clienta: Sin límite"."
+- S10 — Fuera de alcance (L2 #10): "El panel de Caro (RF11, RF12, RF13), las notificaciones push y editar las reglas (RF15)."
+
+## Tasks
+
+| ID  | Specs       | Ruta   | Estado    | Commit |
+| --- | ----------- | ------ | --------- | ------ |
+| T1  | S1 (API)    | inline | pendiente |        |
+| T2  | S2–S4 (API) | inline | pendiente |        |
+| T3  | S5–S8 (web) | inline | pendiente |        |
+
+Ruta: todo inline; T1 → T2 → T3 dependen entre sí (comparten la búsqueda de la cita propia y el motor). Riesgo previsto: ítem 1 (cambiar datos guardados) y ítem 2 (solo la dueña) en T1 y T2; ítem 4 (turnos de dos días) en T2.
+
+## Log
+
+- L1 (2026-11-21, usuario): "dale, arranquemos la entrega 6" (cancelar RF08 y reprogramar RF09).
+- L2 (2026-11-21, usuario): "sí, me sirven todas, una precisión respecto a lo que te dije de engram, si consideras que necesitas si o si consultar archivos hazlo, no sacrifiquemos calidad. ahora si arranquemos" (aprueba la tabla de 10 decisiones, citadas en S1–S10).
+- L3: T1. `POST /api/appointments/:id/cancel` con sesión (401 sin ella): un solo UPDATE con todas las condiciones (propia, `scheduled`, inicio ≥ ahora + `cancel_min_hours`), así dos cancelaciones a la vez o una justo al vencer el plazo no se cuelan; a las 2 horas justas todavía se puede. Deja `cancelled`, `cancelled_by` = rol y `cancelled_at`; la hora queda libre (la exclusión solo mira las agendadas). Si no se canceló: cita ajena o inexistente → 404 `not_found` (sin decir si existe); ya no se puede (plazo vencido, ya cancelada o completada) → 409 `cancel_too_late` "Ya no se puede cancelar esta cita. Escríbele a Caro por WhatsApp.". Respuesta 200 `{ appointment, caroWhatsapp }` (`AppointmentChange`). `GET /api/appointments` agrega `canCancel` y `canReschedule` a cada cita (reprogramar: faltan `reschedule_min_days` o más, por fechas de Bogotá). `isUuid` compartido (lo usa también el panel de servicios). Ayudantes de tests de citas en `test/db/appointment-helpers.ts` (los usa también la lista). RED: 6 de 8 (los 2 de 404 pasaban porque la ruta no existía) → verdes. Mutaciones: sin el plazo → falla "se puede hasta 2 horas antes"; sin el filtro por dueña → falla "la cita de otra clienta"; restaurado. Chequeos: test:db 171/171, test 147/147, typecheck, lint y formato en verde.

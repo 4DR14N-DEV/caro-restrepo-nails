@@ -1,4 +1,4 @@
-import { serviceInputSchema, serviceUpdateSchema, type AdminService } from "@caro/shared";
+import { isUuid, serviceInputSchema, serviceUpdateSchema, type AdminService } from "@caro/shared";
 import { asc, eq, sql } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { requireAdmin } from "../auth/require-admin.js";
@@ -15,8 +15,6 @@ const adminColumns = {
   durationMinutes: services.durationMinutes,
   active: services.active,
 };
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function nameTaken(res: Response): void {
   res
@@ -65,7 +63,7 @@ export function adminServicesRouter(db: Database): Router {
 
   router.patch("/:id", async (req, res) => {
     const { id } = req.params;
-    if (!UUID.test(id)) {
+    if (!isUuid(id)) {
       res.status(404).json({ error: "not_found" });
       return;
     }

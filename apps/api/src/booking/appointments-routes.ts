@@ -1,22 +1,29 @@
 import {
   bookingRequestSchema,
+  cancelTooLateMessage,
   HISTORY_LIMIT,
+  isUuid,
   summarize,
+  type AppointmentChange,
   type AppointmentState,
   type BookingResult,
   type MyAppointment,
   type MyAppointments,
 } from "@caro/shared";
-import { and, asc, desc, eq, gt, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { Router } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
 import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "../db/errors.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
-import { bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
+import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
 import { serviceUnavailable, slotTaken } from "./responses.js";
-import { loadActiveServices, offeredTimes } from "./schedule.js";
+import { loadActiveServices, loadSettings, offeredTimes } from "./schedule.js";
+
+const HOUR = 60 * MINUTE;
+
+type Rules = Awaited<ReturnType<typeof loadSettings>>;
 
 // Teléfono de la cuenta de Caro para el botón de WhatsApp (la primera admin creada).
 async function caroPhone(db: Database): Promise<string | null> {
@@ -29,10 +36,35 @@ async function caroPhone(db: Database): Promise<string | null> {
   return caro?.phone ?? null;
 }
 
+// Lo que se lee de cada cita para mostrarla.
+const appointmentColumns = {
+  id: appointments.id,
+  startAt: appointments.startAt,
+  endAt: appointments.endAt,
+  status: appointments.status,
+  totalPriceCop: appointments.totalPriceCop,
+};
+
 type Row = { id: string; startAt: Date; endAt: Date; status: string; totalPriceCop: number };
 
-// Las citas con sus servicios (la copia guardada al reservar) y su estado para la clienta.
-async function withServices(db: Database, rows: Row[], current: Date): Promise<MyAppointment[]> {
+// Cancelar se puede hasta `cancel_min_hours` antes (con las horas justas todavía se puede).
+// Esta es la hora de inicio más temprana que todavía se puede cancelar.
+const cancelDeadline = (current: Date, rules: Rules) =>
+  new Date(current.getTime() + rules.cancelMinHours * HOUR);
+
+// Reprogramar se puede si faltan `reschedule_min_days` días o más, contados por fechas de
+// Bogotá como la ventana de reserva.
+const canRescheduleOn = (startAt: Date, current: Date, rules: Rules) =>
+  bogotaDate(startAt) >= addDays(bogotaDate(current), rules.rescheduleMinDays);
+
+// Las citas con sus servicios (la copia guardada al reservar), su estado para la clienta y
+// lo que todavía puede hacer con ellas.
+async function withServices(
+  db: Database,
+  rows: Row[],
+  current: Date,
+  rules: Rules,
+): Promise<MyAppointment[]> {
   const copies = rows.length
     ? await db
         .select({
@@ -63,6 +95,8 @@ async function withServices(db: Database, rows: Row[], current: Date): Promise<M
       durationMinutes: (row.endAt.getTime() - row.startAt.getTime()) / MINUTE,
       totalPriceCop: row.totalPriceCop,
       state,
+      canCancel: state === "upcoming" && row.startAt >= cancelDeadline(current, rules),
+      canReschedule: state === "upcoming" && canRescheduleOn(row.startAt, current, rules),
     };
   });
 }
@@ -76,13 +110,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     if (!user) return;
 
     const current = now();
-    const columns = {
-      id: appointments.id,
-      startAt: appointments.startAt,
-      endAt: appointments.endAt,
-      status: appointments.status,
-      totalPriceCop: appointments.totalPriceCop,
-    };
+    const columns = appointmentColumns;
     const mine = eq(appointments.clientId, user.id);
     const [upcoming, history] = await Promise.all([
       db
@@ -102,13 +130,67 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         .limit(HISTORY_LIMIT),
     ]);
 
+    const rules = await loadSettings(db);
     const [upcomingList, historyList] = await Promise.all([
-      withServices(db, upcoming, current),
-      withServices(db, history, current),
+      withServices(db, upcoming, current, rules),
+      withServices(db, history, current, rules),
     ]);
     const result: MyAppointments = { upcoming: upcomingList, history: historyList };
     // Son datos personales: que no queden guardados en el navegador ni en intermediarios.
     res.set("Cache-Control", "no-store").json(result);
+  });
+
+  // Cancelar (RF08): solo una cita propia y agendada, hasta `cancel_min_hours` antes.
+  router.post("/:id/cancel", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    const { id } = req.params;
+    if (!isUuid(id)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
+    const [rules, caroWhatsapp] = await Promise.all([loadSettings(db), caroPhone(db)]);
+    const current = now();
+    // Todas las condiciones van en el mismo UPDATE: dos cancelaciones a la vez, o una justo
+    // al vencer el plazo, no se cuelan. Cancelar libera la hora: la restricción de exclusión
+    // solo mira las citas agendadas.
+    const [row] = await db
+      .update(appointments)
+      .set({
+        status: "cancelled",
+        cancelledBy: user.role,
+        cancelledAt: current,
+        updatedAt: current,
+      })
+      .where(
+        and(
+          eq(appointments.id, id),
+          eq(appointments.clientId, user.id),
+          eq(appointments.status, "scheduled"),
+          gte(appointments.startAt, cancelDeadline(current, rules)),
+        ),
+      )
+      .returning(appointmentColumns);
+
+    if (!row) {
+      // No se canceló: o no es una cita suya (404, sin decir si existe), o ya no se puede.
+      const [own] = await db
+        .select({ id: appointments.id })
+        .from(appointments)
+        .where(and(eq(appointments.id, id), eq(appointments.clientId, user.id)));
+      if (!own) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.status(409).json({ error: "cancel_too_late", fields: { form: cancelTooLateMessage } });
+      return;
+    }
+
+    const [appointment] = await withServices(db, [row], current, rules);
+    if (!appointment) throw new Error("No se leyó la cita cancelada.");
+    const result: AppointmentChange = { appointment, caroWhatsapp };
+    res.json(result);
   });
 
   // Reservar (RF06): la cita queda confirmada al instante si la hora está libre.

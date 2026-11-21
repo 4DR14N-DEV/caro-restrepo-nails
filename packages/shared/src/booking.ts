@@ -6,6 +6,11 @@ import { onlyKnownFields } from "./strict.js";
 export const MAX_SERVICES_PER_BOOKING = 10;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Un id de la base (uuid). Las rutas con id en la URL lo revisan antes de consultar.
+export function isUuid(text: string): boolean {
+  return UUID.test(text);
+}
 const pickMessage = "Elige al menos un servicio.";
 
 // Los servicios de una cita: uno o varios, sin repetir. Los ids se pasan a minúsculas,
@@ -90,7 +95,19 @@ export interface MyAppointment {
   durationMinutes: number;
   totalPriceCop: number;
   state: AppointmentState;
+  // Si la clienta todavía puede cancelarla o reprogramarla (reglas de `settings`).
+  canCancel: boolean;
+  canReschedule: boolean;
 }
+
+// Una cita recién cancelada o reprogramada, con el teléfono de Caro para avisarle.
+export interface AppointmentChange {
+  appointment: MyAppointment;
+  caroWhatsapp: string | null;
+}
+
+export const cancelTooLateMessage =
+  "Ya no se puede cancelar esta cita. Escríbele a Caro por WhatsApp.";
 
 export interface MyAppointments {
   // Agendadas que todavía no empiezan, de la más cercana a la más lejana.

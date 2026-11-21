@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
-import { createSession } from "../../src/auth/sessions.js";
-import { appointments, appointmentServices, services, users } from "../../src/db/schema.js";
+import { services } from "../../src/db/schema.js";
 import { seed } from "../../src/db/seed-data.js";
+import { appointmentHelpers, cancelledValues as cancelled } from "./appointment-helpers.js";
 import { createTestDatabase } from "./helpers.js";
 
 type TestDatabase = Awaited<ReturnType<typeof createTestDatabase>>;
@@ -31,62 +31,7 @@ afterAll(async () => {
   await database.pool.end();
 });
 
-async function signedIn(phone: string, name = "Ana María") {
-  const [user] = await database.db
-    .insert(users)
-    .values({ name, phone, passwordHash: "hash-de-prueba", consentAcceptedAt: new Date() })
-    .returning({ id: users.id });
-  if (!user) throw new Error("No se creó la cuenta de prueba.");
-  return { userId: user.id, cookie: `session=${await createSession(database.db, user.id)}` };
-}
-
-async function service(name: string) {
-  const [row] = await database.db.select().from(services).where(eq(services.name, name));
-  if (!row) throw new Error(`No existe el servicio ${name}.`);
-  return row;
-}
-
-// Guarda una cita con la copia de sus servicios. `start` es la hora UTC de inicio.
-async function appointment(
-  clientId: string,
-  start: string,
-  names: string[],
-  values: Partial<typeof appointments.$inferInsert> = {},
-) {
-  const chosen = await Promise.all(names.map(service));
-  const minutes = chosen.reduce((total, row) => total + row.durationMinutes, 0);
-  const startAt = new Date(start);
-  const endAt = new Date(startAt.getTime() + minutes * 60_000);
-  const [row] = await database.db
-    .insert(appointments)
-    .values({
-      clientId,
-      startAt,
-      endAt,
-      occupiedUntil: new Date(endAt.getTime() + 10 * 60_000),
-      totalPriceCop: chosen.reduce((total, r) => total + r.priceCop, 0),
-      createdBy: "client",
-      ...values,
-    })
-    .returning({ id: appointments.id });
-  if (!row) throw new Error("No se guardó la cita de prueba.");
-  await database.db.insert(appointmentServices).values(
-    chosen.map((r) => ({
-      appointmentId: row.id,
-      serviceId: r.id,
-      serviceName: r.name,
-      priceCop: r.priceCop,
-      durationMinutes: r.durationMinutes,
-    })),
-  );
-  return row.id;
-}
-
-const cancelled = {
-  status: "cancelled" as const,
-  cancelledBy: "client" as const,
-  cancelledAt: new Date(),
-};
+const { signedIn, appointment } = appointmentHelpers(() => database);
 
 describe("GET /api/appointments", () => {
   it("sin sesión responde 401", async () => {
@@ -138,6 +83,8 @@ describe("GET /api/appointments", () => {
         durationMinutes: 90,
         totalPriceCop: 55000,
         state: "upcoming",
+        canCancel: true,
+        canReschedule: true,
       },
       expect.objectContaining({ id: tuesday, date: "2026-11-24", time: "10:00" }),
     ]);
