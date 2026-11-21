@@ -3,6 +3,9 @@ import {
   cancelTooLateMessage,
   HISTORY_LIMIT,
   isUuid,
+  rescheduleRequestSchema,
+  rescheduleTimesQuerySchema,
+  rescheduleTooLateMessage,
   summarize,
   type AppointmentChange,
   type AppointmentState,
@@ -11,7 +14,7 @@ import {
   type MyAppointments,
 } from "@caro/shared";
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
 import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "../db/errors.js";
@@ -57,6 +60,53 @@ const cancelDeadline = (current: Date, rules: Rules) =>
 const canRescheduleOn = (startAt: Date, current: Date, rules: Rules) =>
   bogotaDate(startAt) >= addDays(bogotaDate(current), rules.rescheduleMinDays);
 
+// Una cita se puede reprogramar si está agendada, todavía no empezó y faltan los días mínimos.
+const movable = (row: Row, current: Date, rules: Rules) =>
+  row.status === "scheduled" &&
+  row.startAt > current &&
+  canRescheduleOn(row.startAt, current, rules);
+
+const minutesOf = (row: Row) => (row.endAt.getTime() - row.startAt.getTime()) / MINUTE;
+
+// Turno de una fecha: las escrituras de citas de un mismo día van de a una (ver reservar).
+const lockDay = (tx: Pick<Database, "execute">, date: string) =>
+  tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking:${date}`}))`);
+
+function notFound(res: Response): void {
+  res.status(404).json({ error: "not_found" });
+}
+
+function rescheduleTooLate(res: Response): void {
+  res
+    .status(409)
+    .json({ error: "reschedule_too_late", fields: { form: rescheduleTooLateMessage } });
+}
+
+// Errores al guardar una cita con los turnos tomados. Devuelve true si ya respondió.
+function answeredWriteError(error: unknown, res: Response): boolean {
+  if (hasPgCode(error, LOCK_NOT_AVAILABLE)) {
+    res.status(503).json({ error: "busy" });
+    return true;
+  }
+  // Red de seguridad por si algo escribe citas sin el turno: la restricción de exclusión
+  // de la base impide la superposición (RF21) y, si dos escrituras se esperaban una a la
+  // otra, Postgres corta una con un interbloqueo. Para la clienta es lo mismo.
+  if (hasPgCode(error, EXCLUSION_VIOLATION) || hasPgCode(error, DEADLOCK)) {
+    slotTaken(res);
+    return true;
+  }
+  return false;
+}
+
+// Una cita de la clienta, en cualquier estado; undefined si no existe o es de otra persona.
+async function loadOwn(db: Pick<Database, "select">, id: string, clientId: string) {
+  const [row] = await db
+    .select(appointmentColumns)
+    .from(appointments)
+    .where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)));
+  return row;
+}
+
 // Las citas con sus servicios (la copia guardada al reservar), su estado para la clienta y
 // lo que todavía puede hacer con ellas.
 async function withServices(
@@ -92,11 +142,11 @@ async function withServices(
       date: bogotaDate(row.startAt),
       time: bogotaTime(row.startAt),
       services: copies.filter((copy) => copy.appointmentId === row.id).map((copy) => copy.name),
-      durationMinutes: (row.endAt.getTime() - row.startAt.getTime()) / MINUTE,
+      durationMinutes: minutesOf(row),
       totalPriceCop: row.totalPriceCop,
       state,
       canCancel: state === "upcoming" && row.startAt >= cancelDeadline(current, rules),
-      canReschedule: state === "upcoming" && canRescheduleOn(row.startAt, current, rules),
+      canReschedule: movable(row, current, rules),
     };
   });
 }
@@ -145,10 +195,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     const user = await currentUser(db, req, res);
     if (!user) return;
     const { id } = req.params;
-    if (!isUuid(id)) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
+    if (!isUuid(id)) return notFound(res);
 
     const [rules, caroWhatsapp] = await Promise.all([loadSettings(db), caroPhone(db)]);
     const current = now();
@@ -175,14 +222,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
 
     if (!row) {
       // No se canceló: o no es una cita suya (404, sin decir si existe), o ya no se puede.
-      const [own] = await db
-        .select({ id: appointments.id })
-        .from(appointments)
-        .where(and(eq(appointments.id, id), eq(appointments.clientId, user.id)));
-      if (!own) {
-        res.status(404).json({ error: "not_found" });
-        return;
-      }
+      if (!(await loadOwn(db, id, user.id))) return notFound(res);
       res.status(409).json({ error: "cancel_too_late", fields: { form: cancelTooLateMessage } });
       return;
     }
@@ -191,6 +231,91 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     if (!appointment) throw new Error("No se leyó la cita cancelada.");
     const result: AppointmentChange = { appointment, caroWhatsapp };
     // Datos personales, como en la lista: que no queden guardados en ningún lado.
+    res.set("Cache-Control", "no-store").json(result);
+  });
+
+  // Horas libres de un día para mover una cita propia, con su duración y sin que su propio
+  // horario cuente como ocupado.
+  router.get("/:id/times", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    const { id } = req.params;
+    if (!isUuid(id)) return notFound(res);
+    const parsed = rescheduleTimesQuerySchema.safeParse(req.query);
+    if (!parsed.success) return invalidInput(res, parsed.error);
+
+    const own = await loadOwn(db, id, user.id);
+    if (!own) return notFound(res);
+    const rules = await loadSettings(db);
+    if (!movable(own, now(), rules)) return rescheduleTooLate(res);
+
+    const { times } = await offeredTimes(db, now, parsed.data.date, minutesOf(own), own.id);
+    res.json({ times });
+  });
+
+  // Reprogramar (RF09): se mueve la misma cita, con sus servicios y precios, si faltan los
+  // días mínimos y la hora nueva está libre dentro de la ventana de reserva.
+  router.patch("/:id", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    const { id } = req.params;
+    if (!isUuid(id)) return notFound(res);
+    const parsed = rescheduleRequestSchema.safeParse(req.body);
+    if (!parsed.success) return invalidInput(res, parsed.error);
+    const { date, time } = parsed.data;
+
+    const own = await loadOwn(db, id, user.id);
+    if (!own) return notFound(res);
+    const [rules, caroWhatsapp] = await Promise.all([loadSettings(db), caroPhone(db)]);
+    if (!movable(own, now(), rules)) return rescheduleTooLate(res);
+
+    let outcome: { moved: Row } | "too_late" | "slot_taken";
+    try {
+      outcome = await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
+        // Turnos del día viejo y del nuevo, siempre en orden de fecha: dos reprogramaciones
+        // cruzadas (lunes → martes y martes → lunes) los toman igual y no se traban.
+        for (const day of [...new Set([bogotaDate(own.startAt), date])].sort()) {
+          await lockDay(tx, day);
+        }
+
+        // Se vuelve a leer con los turnos tomados: pudo cancelarse o moverse mientras tanto.
+        const [fresh] = await tx
+          .select(appointmentColumns)
+          .from(appointments)
+          .where(and(eq(appointments.id, id), eq(appointments.clientId, user.id)))
+          .for("update");
+        if (!fresh || !movable(fresh, now(), rules)) return "too_late";
+
+        const duration = minutesOf(fresh);
+        const { times } = await offeredTimes(tx, now, date, duration, id);
+        if (!times.includes(time)) return "slot_taken";
+
+        const startAt = bogotaInstant(date, time);
+        const endAt = new Date(startAt.getTime() + duration * MINUTE);
+        const [moved] = await tx
+          .update(appointments)
+          .set({
+            startAt,
+            endAt,
+            occupiedUntil: new Date(endAt.getTime() + rules.bufferMinutes * MINUTE),
+            updatedAt: now(),
+          })
+          .where(eq(appointments.id, id))
+          .returning(appointmentColumns);
+        if (!moved) throw new Error("No se movió la cita.");
+        return { moved };
+      });
+    } catch (error) {
+      if (answeredWriteError(error, res)) return;
+      throw error;
+    }
+    if (outcome === "too_late") return rescheduleTooLate(res);
+    if (outcome === "slot_taken") return slotTaken(res);
+
+    const [appointment] = await withServices(db, [outcome.moved], now(), rules);
+    if (!appointment) throw new Error("No se leyó la cita reprogramada.");
+    const result: AppointmentChange = { appointment, caroWhatsapp };
     res.set("Cache-Control", "no-store").json(result);
   });
 
@@ -220,7 +345,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         // hay carreras ni interbloqueos entre reservas. La espera tiene un tope: si el turno
         // no se libera a tiempo, la reserva se rinde en vez de ocupar una conexión sin fin.
         await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking:${date}`}))`);
+        await lockDay(tx, date);
 
         // La disponibilidad se vuelve a calcular aquí, dentro del turno: solo vale una hora
         // que el motor ofrece ahora mismo, no la que la página mostró hace un rato.
@@ -255,16 +380,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         return appointment.id;
       });
     } catch (error) {
-      if (hasPgCode(error, LOCK_NOT_AVAILABLE)) {
-        res.status(503).json({ error: "busy" });
-        return;
-      }
-      // Red de seguridad por si algo escribe citas sin el turno: la restricción de exclusión
-      // de la base impide la superposición (RF21) y, si dos escrituras se esperaban una a la
-      // otra, Postgres corta una con un interbloqueo. Para la clienta es lo mismo.
-      if (hasPgCode(error, EXCLUSION_VIOLATION) || hasPgCode(error, DEADLOCK)) {
-        return slotTaken(res);
-      }
+      if (answeredWriteError(error, res)) return;
       throw error;
     }
     if (!id) return slotTaken(res);

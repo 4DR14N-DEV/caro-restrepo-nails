@@ -52,16 +52,23 @@ export const serviceUnavailableMessage =
   "Alguno de los servicios ya no está disponible. Vuelve a elegirlos.";
 
 const timeMessage = "Elige una hora válida.";
+// Hora de inicio en hora de Bogotá, "HH:MM".
+const bookingTimeSchema = z.string(timeMessage).regex(/^([01]\d|2[0-3]):[0-5]\d$/, timeMessage);
 
-// Reservar: los servicios, el día y la hora de inicio (hora de Bogotá, "HH:MM").
+// Reservar: los servicios, el día y la hora de inicio.
 export const bookingRequestSchema = z.strictObject(
-  {
-    serviceIds: serviceIdsSchema,
-    date: bookingDateSchema,
-    time: z.string(timeMessage).regex(/^([01]\d|2[0-3]):[0-5]\d$/, timeMessage),
-  },
+  { serviceIds: serviceIdsSchema, date: bookingDateSchema, time: bookingTimeSchema },
   onlyKnownFields,
 );
+
+// Reprogramar: solo el día y la hora nuevos; los servicios no cambian.
+export const rescheduleRequestSchema = z.strictObject(
+  { date: bookingDateSchema, time: bookingTimeSchema },
+  onlyKnownFields,
+);
+
+// Horas libres de un día para mover una cita (la duración sale de la cita).
+export const rescheduleTimesQuerySchema = z.object({ date: bookingDateSchema });
 
 export type BookingRequest = z.output<typeof bookingRequestSchema>;
 
@@ -108,6 +115,9 @@ export interface AppointmentChange {
 
 export const cancelTooLateMessage =
   "Ya no se puede cancelar esta cita. Escríbele a Caro por WhatsApp.";
+
+export const rescheduleTooLateMessage =
+  "Ya no se puede reprogramar esta cita. Escríbele a Caro por WhatsApp.";
 
 export interface MyAppointments {
   // Agendadas que todavía no empiezan, de la más cercana a la más lejana.

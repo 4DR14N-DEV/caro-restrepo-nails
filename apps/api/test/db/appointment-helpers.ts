@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { expect } from "vitest";
 import { createSession } from "../../src/auth/sessions.js";
 import { appointments, appointmentServices, services, users } from "../../src/db/schema.js";
 import type { createTestDatabase } from "./helpers.js";
@@ -69,5 +70,22 @@ export function appointmentHelpers(database: () => TestDatabase) {
     return row.id;
   }
 
-  return { signedIn, service, appointment };
+  // Espera a que la consulta de la API que empieza con `query` quede bloqueada por otra
+  // conexión. Con un tope: si nunca se bloquea, falla con un mensaje claro en vez de colgarse.
+  async function waitForBlocked(query: string) {
+    let blocked = false;
+    for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
+      const { rows } = await database().pool.query(
+        `SELECT count(*)::int AS n FROM pg_stat_activity
+         WHERE wait_event_type = 'Lock' AND datname = current_database()
+           AND query ILIKE $1`,
+        [`${query}%`],
+      );
+      blocked = rows[0].n > 0;
+      if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(blocked, `la consulta "${query}" de la API tenía que esperar`).toBe(true);
+  }
+
+  return { signedIn, service, appointment, waitForBlocked };
 }

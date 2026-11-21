@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import {
   appointments,
@@ -21,8 +21,14 @@ export async function loadSettings(db: Reader) {
 }
 
 // Los días de `first` a `last` (fechas de Bogotá, incluidas), cada uno con su horario
-// base, las excepciones y las citas agendadas que lo tocan.
-export async function loadDays(db: Reader, first: string, last: string): Promise<DaySchedule[]> {
+// base, las excepciones y las citas agendadas que lo tocan. `exceptId` deja afuera una cita:
+// al reprogramarla, su propio horario no cuenta como ocupado.
+export async function loadDays(
+  db: Reader,
+  first: string,
+  last: string,
+  exceptId?: string,
+): Promise<DaySchedule[]> {
   const rangeStart = bogotaInstant(first, "00:00");
   const rangeEnd = bogotaInstant(addDays(last, 1), "00:00");
 
@@ -43,6 +49,7 @@ export async function loadDays(db: Reader, first: string, last: string): Promise
           eq(appointments.status, "scheduled"),
           lt(appointments.startAt, rangeEnd),
           gt(appointments.occupiedUntil, rangeStart),
+          exceptId ? ne(appointments.id, exceptId) : undefined,
         ),
       ),
   ]);
@@ -87,11 +94,13 @@ export async function offeredTimes(
   now: () => Date,
   date: string,
   durationMinutes: number,
+  // Al reprogramar, la cita que se mueve no se tapa a sí misma.
+  exceptId?: string,
 ) {
   const rules = await loadSettings(db);
   const { first, last } = bookingWindow(bogotaDate(now()), rules);
   if (date < first || date > last) return { rules, times: [] };
-  const [day] = await loadDays(db, date, date);
+  const [day] = await loadDays(db, date, date, exceptId);
   // Con anticipación mínima de 0 días, la fecha puede ser hoy: no se ofrecen horas pasadas.
   const later = (time: string) => bogotaInstant(date, time) > now();
   return { rules, times: day ? availableTimes(day, durationMinutes, rules).filter(later) : [] };
