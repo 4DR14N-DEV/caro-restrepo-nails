@@ -242,6 +242,8 @@ describe("POST /api/appointments", () => {
       expect(response.status).toBe(409);
       expect(response.body.error).toBe("slot_taken");
     } finally {
+      // Si el test falla a mitad de camino, no deja una transacción abierta con el turno.
+      await other.query("ROLLBACK").catch(() => undefined);
       other.release();
     }
     const saved = await database.db.select().from(appointments);
@@ -279,6 +281,8 @@ describe("POST /api/appointments", () => {
         fields: { time: "Esa hora ya no está disponible. Elige otra." },
       });
     } finally {
+      // Si el test falla a mitad de camino, no deja una transacción abierta con el turno.
+      await other.query("ROLLBACK").catch(() => undefined);
       other.release();
     }
     expect(await database.db.select().from(appointments)).toEqual([]);
@@ -310,10 +314,36 @@ describe("POST /api/appointments", () => {
       expect(response.status).toBe(409);
       expect(response.body.error).toBe("slot_taken");
     } finally {
+      // Si el test falla a mitad de camino, no deja una transacción abierta con el turno.
+      await other.query("ROLLBACK").catch(() => undefined);
       other.release();
     }
     expect(await database.db.select().from(appointments)).toEqual([]);
   });
+
+  it(
+    "si el turno del día no se libera a tiempo, responde 503 y no guarda nada",
+    { timeout: 20_000 },
+    async () => {
+      const { cookie } = await signedIn("client", "+573001234567");
+      const manos = await serviceId("Semipermanente manos");
+
+      const other = await database.pool.connect();
+      try {
+        await other.query("BEGIN");
+        await other.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`booking:${MONDAY}`]);
+
+        const response = await book(cookie, { serviceIds: [manos], date: MONDAY, time: "10:00" });
+
+        expect(response.status).toBe(503);
+        expect(response.body).toEqual({ error: "busy" });
+      } finally {
+        await other.query("ROLLBACK").catch(() => undefined);
+        other.release();
+      }
+      expect(await database.db.select().from(appointments)).toEqual([]);
+    },
+  );
 
   it("responde 409 si algún servicio ya no está disponible", async () => {
     const { cookie } = await signedIn("client", "+573001234567");

@@ -80,6 +80,8 @@ export function formErrorMessage(result: Extract<ApiResult<unknown>, { ok: false
       return result.retryAfterSeconds === undefined
         ? "Demasiados intentos. Vuelve a intentarlo más tarde."
         : `Demasiados intentos. Vuelve a intentarlo en ${waitTime(result.retryAfterSeconds)}.`;
+    case "busy":
+      return "Hay muchas reservas en este momento. Inténtalo de nuevo en unos segundos.";
     case "network":
       return "No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.";
     default:

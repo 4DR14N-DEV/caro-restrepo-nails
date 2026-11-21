@@ -3,7 +3,7 @@ import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
-import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode } from "../db/errors.js";
+import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "../db/errors.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { bogotaInstant, MINUTE } from "./dates.js";
@@ -46,7 +46,9 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
       id = await db.transaction(async (tx) => {
         // Turno del día: las reservas de una misma fecha se guardan de a una. La segunda
         // espera a que la primera termine y calcula las horas ya con esa cita, así que no
-        // hay carreras ni interbloqueos entre reservas.
+        // hay carreras ni interbloqueos entre reservas. La espera tiene un tope: si el turno
+        // no se libera a tiempo, la reserva se rinde en vez de ocupar una conexión sin fin.
+        await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking:${date}`}))`);
 
         // La disponibilidad se vuelve a calcular aquí, dentro del turno: solo vale una hora
@@ -82,6 +84,10 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         return appointment.id;
       });
     } catch (error) {
+      if (hasPgCode(error, LOCK_NOT_AVAILABLE)) {
+        res.status(503).json({ error: "busy" });
+        return;
+      }
       // Red de seguridad por si algo escribe citas sin el turno: la restricción de exclusión
       // de la base impide la superposición (RF21) y, si dos escrituras se esperaban una a la
       // otra, Postgres corta una con un interbloqueo. Para la clienta es lo mismo.
