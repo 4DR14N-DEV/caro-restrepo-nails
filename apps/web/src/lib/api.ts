@@ -2,6 +2,7 @@ import type {
   AdminService,
   BookingRequest,
   BookingResult,
+  MyAppointments,
   PublicService,
   PublicUser,
   ServiceData,
@@ -68,6 +69,7 @@ export const api = {
       `/api/booking/times?${new URLSearchParams({ date, services: serviceIds.join(",") })}`,
     ),
   book: (body: BookingRequest) => call<BookingResult>("POST", "/api/appointments", body),
+  myAppointments: () => call<MyAppointments>("GET", "/api/appointments"),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.

@@ -184,6 +184,17 @@ describe("GET /api/appointments", () => {
     expect(body.upcoming[0]).toMatchObject({ totalPriceCop: 15000, durationMinutes: 30 });
   });
 
+  it("con dos citas a la misma hora (una cancelada y la que la reemplazó), va primero la más nueva", async () => {
+    const { userId, cookie } = await signedIn("+573001234567");
+    const first = await appointment(userId, "2026-11-19T15:00:00Z", ["Retiro"], cancelled);
+    const second = await appointment(userId, "2026-11-19T15:00:00Z", ["Retiro"]);
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { body } = await request(app).get("/api/appointments").set("Cookie", cookie);
+      expect(body.history.map((a: { id: string }) => a.id)).toEqual([second, first]);
+    }
+  });
+
   it("el historial muestra las últimas 20", async () => {
     const { userId, cookie } = await signedIn("+573001234567");
     for (let day = 1; day <= 22; day++) {

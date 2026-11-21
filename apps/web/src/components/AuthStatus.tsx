@@ -32,6 +32,12 @@ export function AuthStatus() {
         <p>
           Hola, <span className="font-medium">{user.name}</span>.
         </p>
+        <a
+          href="/mis-citas"
+          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+        >
+          Mis citas
+        </a>
         {user.role === "admin" && (
           <a
             href="/admin/servicios"

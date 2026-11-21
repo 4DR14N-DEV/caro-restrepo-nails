@@ -96,7 +96,9 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         .where(
           and(mine, or(ne(appointments.status, "scheduled"), lte(appointments.startAt, current))),
         )
-        .orderBy(desc(appointments.startAt))
+        // Una cita cancelada y la que la reemplazó pueden tener la misma hora: se desempata
+        // por la más nueva, para que el orden (y el corte en 20) no cambie entre consultas.
+        .orderBy(desc(appointments.startAt), desc(appointments.createdAt), desc(appointments.id))
         .limit(HISTORY_LIMIT),
     ]);
 

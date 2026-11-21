@@ -105,6 +105,9 @@ describe("BookingFlow", () => {
     expect(
       await screen.findByRole("heading", { name: "¡Listo! Tu cita quedó confirmada." }),
     ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ver mis citas" }).getAttribute("href")).toBe(
+      "/mis-citas",
+    );
     const whatsapp = screen.getByRole("link", { name: "Avisar a Caro por WhatsApp" });
     expect(whatsapp.getAttribute("href")).toBe(
       "https://wa.me/573007445676?text=" +
@@ -205,6 +208,27 @@ describe("BookingFlow", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(message);
     await vi.waitFor(() => expect(screen.queryByRole("checkbox", { name: /Retiro/ })).toBeNull());
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+  });
+
+  it("si se corta internet al confirmar, pide revisar Mis citas antes de reintentar", async () => {
+    mockApi({
+      ...signedIn,
+      "GET /api/booking/times": () => json(200, { times: ["10:00"] }),
+      "POST /api/appointments": () => Promise.reject(new TypeError("Failed to fetch")),
+    });
+    render(<BookingFlow />);
+
+    await pickServicesAndDay();
+    await userEvent.click(await screen.findByRole("button", { name: "10:00 a. m." }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar reserva" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      "No pudimos confirmar si tu cita quedó guardada. Revisa Mis citas antes de volver a intentarlo.",
+    );
+    expect(within(alert).getByRole("link", { name: "Ir a Mis citas" }).getAttribute("href")).toBe(
+      "/mis-citas",
+    );
   });
 
   it("un día sin horas libres lo dice", async () => {
