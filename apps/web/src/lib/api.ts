@@ -1,5 +1,6 @@
 import type {
   AdminService,
+  AppointmentChange,
   BookingRequest,
   BookingResult,
   MyAppointments,
@@ -70,6 +71,15 @@ export const api = {
     ),
   book: (body: BookingRequest) => call<BookingResult>("POST", "/api/appointments", body),
   myAppointments: () => call<MyAppointments>("GET", "/api/appointments"),
+  cancelAppointment: (id: string) =>
+    call<AppointmentChange>("POST", `/api/appointments/${encodeURIComponent(id)}/cancel`),
+  rescheduleTimes: (id: string, date: string) =>
+    call<{ times: string[] }>(
+      "GET",
+      `/api/appointments/${encodeURIComponent(id)}/times?${new URLSearchParams({ date })}`,
+    ),
+  rescheduleAppointment: (id: string, body: { date: string; time: string }) =>
+    call<AppointmentChange>("PATCH", `/api/appointments/${encodeURIComponent(id)}`, body),
 };
 
 // Mensaje para mostrar arriba del formulario cuando la API rechaza el envío.

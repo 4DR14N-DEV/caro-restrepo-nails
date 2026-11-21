@@ -6,6 +6,11 @@ import { onlyKnownFields } from "./strict.js";
 export const MAX_SERVICES_PER_BOOKING = 10;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Un id de la base (uuid). Las rutas con id en la URL lo revisan antes de consultar.
+export function isUuid(text: string): boolean {
+  return UUID.test(text);
+}
 const pickMessage = "Elige al menos un servicio.";
 
 // Los servicios de una cita: uno o varios, sin repetir. Los ids se pasan a minúsculas,
@@ -47,16 +52,23 @@ export const serviceUnavailableMessage =
   "Alguno de los servicios ya no está disponible. Vuelve a elegirlos.";
 
 const timeMessage = "Elige una hora válida.";
+// Hora de inicio en hora de Bogotá, "HH:MM".
+const bookingTimeSchema = z.string(timeMessage).regex(/^([01]\d|2[0-3]):[0-5]\d$/, timeMessage);
 
-// Reservar: los servicios, el día y la hora de inicio (hora de Bogotá, "HH:MM").
+// Reservar: los servicios, el día y la hora de inicio.
 export const bookingRequestSchema = z.strictObject(
-  {
-    serviceIds: serviceIdsSchema,
-    date: bookingDateSchema,
-    time: z.string(timeMessage).regex(/^([01]\d|2[0-3]):[0-5]\d$/, timeMessage),
-  },
+  { serviceIds: serviceIdsSchema, date: bookingDateSchema, time: bookingTimeSchema },
   onlyKnownFields,
 );
+
+// Reprogramar: solo el día y la hora nuevos; los servicios no cambian.
+export const rescheduleRequestSchema = z.strictObject(
+  { date: bookingDateSchema, time: bookingTimeSchema },
+  onlyKnownFields,
+);
+
+// Horas libres de un día para mover una cita (la duración sale de la cita).
+export const rescheduleTimesQuerySchema = z.object({ date: bookingDateSchema });
 
 export type BookingRequest = z.output<typeof bookingRequestSchema>;
 
@@ -90,7 +102,22 @@ export interface MyAppointment {
   durationMinutes: number;
   totalPriceCop: number;
   state: AppointmentState;
+  // Si la clienta todavía puede cancelarla o reprogramarla (reglas de `settings`).
+  canCancel: boolean;
+  canReschedule: boolean;
 }
+
+// Una cita recién cancelada o reprogramada, con el teléfono de Caro para avisarle.
+export interface AppointmentChange {
+  appointment: MyAppointment;
+  caroWhatsapp: string | null;
+}
+
+export const cancelTooLateMessage =
+  "Ya no se puede cancelar esta cita. Escríbele a Caro por WhatsApp.";
+
+export const rescheduleTooLateMessage =
+  "Ya no se puede reprogramar esta cita. Escríbele a Caro por WhatsApp.";
 
 export interface MyAppointments {
   // Agendadas que todavía no empiezan, de la más cercana a la más lejana.
@@ -165,6 +192,28 @@ export function bookingMessage(booking: {
   time: string;
 }): string {
   return `Hola Caro, soy ${booking.name}. Reservé ${joinNames(booking.services)} el ${formatWhen(booking.date, booking.time)}`;
+}
+
+// "Hola Caro, soy {nombre}. Cancelé mi cita de {servicios} del {día} a las {hora}"
+export function cancelMessage(appointment: {
+  name: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+}): string {
+  return `Hola Caro, soy ${appointment.name}. Cancelé mi cita de ${joinNames(appointment.services)} del ${formatWhen(appointment.date, appointment.time)}`;
+}
+
+// "Hola Caro, soy {nombre}. Moví mi cita de {servicios} del {día} a las {hora} al {día} a las {hora}"
+export function rescheduleMessage(change: {
+  name: string;
+  services: readonly string[];
+  from: { date: string; time: string };
+  to: { date: string; time: string };
+}): string {
+  const from = formatWhen(change.from.date, change.from.time);
+  const to = formatWhen(change.to.date, change.to.time);
+  return `Hola Caro, soy ${change.name}. Moví mi cita de ${joinNames(change.services)} del ${from} al ${to}`;
 }
 
 // Enlace de WhatsApp con el mensaje ya escrito. El número va sin "+".

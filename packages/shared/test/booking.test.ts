@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   bookingMessage,
+  cancelMessage,
+  rescheduleMessage,
   formatDay,
   formatDayShort,
   formatTime,
@@ -74,6 +76,34 @@ describe("mensaje de WhatsApp para Caro", () => {
   it("arma el enlace wa.me con el número sin + y el texto codificado", () => {
     expect(whatsappLink("+573007445676", "Hola Caro, soy Ana.")).toBe(
       "https://wa.me/573007445676?text=Hola%20Caro%2C%20soy%20Ana.",
+    );
+  });
+});
+
+describe("mensajes de WhatsApp al cancelar y reprogramar", () => {
+  it("avisa la cancelación con los servicios, el día y la hora", () => {
+    expect(
+      cancelMessage({
+        name: "Ana María",
+        services: ["Retiro", "Semipermanente manos"],
+        date: "2026-11-23",
+        time: "10:00",
+      }),
+    ).toBe(
+      "Hola Caro, soy Ana María. Cancelé mi cita de Retiro y Semipermanente manos del lunes 23 de noviembre a las 10:00 a. m.",
+    );
+  });
+
+  it("avisa el cambio con el día y la hora de antes y los nuevos", () => {
+    expect(
+      rescheduleMessage({
+        name: "Ana",
+        services: ["Retiro"],
+        from: { date: "2026-11-23", time: "10:00" },
+        to: { date: "2026-11-24", time: "13:00" },
+      }),
+    ).toBe(
+      "Hola Caro, soy Ana. Moví mi cita de Retiro del lunes 23 de noviembre a las 10:00 a. m. al martes 24 de noviembre a la 1:00 p. m.",
     );
   });
 });
