@@ -54,7 +54,7 @@ function toAgenda(row: AgendaRow, services: string[], current: Date): AgendaAppo
 }
 
 // Las citas de la agenda que cumplen `where`, en orden de hora, listas para mostrar.
-async function loadAgenda(db: Database, where: SQL | undefined, current: Date) {
+async function loadAgenda(db: Pick<Database, "select">, where: SQL | undefined, current: Date) {
   const rows = await db
     .select(agendaColumns)
     .from(appointments)
@@ -121,26 +121,30 @@ export function adminAppointmentsRouter(db: Database, now: () => Date): Router {
     // Cancelar: solo una agendada, en cualquier momento (sin el plazo de las clientas); libera
     // la hora porque la restricción de exclusión solo mira las agendadas. Completada o no
     // asistió: solo si ya empezó; entre ellas se pueden corregir. Una cancelada no vuelve atrás.
-    const [updated] =
-      status === "cancelled"
-        ? await db
-            .update(appointments)
-            .set({ status, cancelledBy: "admin", cancelledAt: current, updatedAt: current })
-            .where(and(eq(appointments.id, id), eq(appointments.status, "scheduled")))
-            .returning({ id: appointments.id })
-        : await db
-            .update(appointments)
-            .set({ status, updatedAt: current })
-            .where(
-              and(
-                eq(appointments.id, id),
-                inArray(appointments.status, ["scheduled", "completed", "no_show"]),
-                lte(appointments.startAt, current),
-              ),
-            )
-            .returning({ id: appointments.id });
+    // La cita que se responde se lee en la misma transacción, así refleja este cambio.
+    const { updated, appointment } = await db.transaction(async (tx) => {
+      const [changed] =
+        status === "cancelled"
+          ? await tx
+              .update(appointments)
+              .set({ status, cancelledBy: "admin", cancelledAt: current, updatedAt: current })
+              .where(and(eq(appointments.id, id), eq(appointments.status, "scheduled")))
+              .returning({ id: appointments.id })
+          : await tx
+              .update(appointments)
+              .set({ status, updatedAt: current })
+              .where(
+                and(
+                  eq(appointments.id, id),
+                  inArray(appointments.status, ["scheduled", "completed", "no_show"]),
+                  lte(appointments.startAt, current),
+                ),
+              )
+              .returning({ id: appointments.id });
+      const [row] = await loadAgenda(tx, eq(appointments.id, id), current);
+      return { updated: changed, appointment: row };
+    });
 
-    const [appointment] = await loadAgenda(db, eq(appointments.id, id), current);
     if (!appointment) {
       res.status(404).json({ error: "not_found" });
       return;

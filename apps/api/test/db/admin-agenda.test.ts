@@ -278,6 +278,15 @@ describe("PATCH /api/admin/appointments/:id/status", () => {
     expect((await stored(id))?.status).toBe("no_show");
   });
 
+  it("se puede marcar justo en el instante en que empieza", async () => {
+    const caro = await asCaro();
+    const ana = await signedIn("+573001234567");
+    const atNow = await appointment(ana.userId, "2026-11-23T15:00:00Z", ["Retiro"]); // 10:00
+
+    expect((await mark(caro.cookie, atNow, "completed")).status).toBe(200);
+    expect((await stored(atNow))?.status).toBe("completed");
+  });
+
   it("una cita que todavía no empieza no se marca completada ni no asistió", async () => {
     const caro = await asCaro();
     const ana = await signedIn("+573001234567");
