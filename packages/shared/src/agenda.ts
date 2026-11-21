@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { bookingDateSchema } from "./booking.js";
+import { bookingDateSchema, formatTime } from "./booking.js";
 import { onlyKnownFields } from "./strict.js";
 
 // Agenda de Caro (RF10, RF12), compartida por la API y el panel.
@@ -138,3 +138,27 @@ export const exceptionConflictMessage =
   "Ya hay citas en esa franja. Muévelas o cancélalas primero.";
 export const pastDayMessage = "No se puede cambiar el horario de un día que ya pasó.";
 export const closedDayMessage = "Ese día no abre: no se puede abrir más temprano.";
+
+// "13:00", "14:00" → "1:00–2:00 p. m."; si cambian de a. m. a p. m., van las dos completas.
+// "24:00" es la medianoche al final del día.
+export function formatRange(from: string, to: string): string {
+  const start = formatTime(from);
+  const end = formatTime(to === "24:00" ? "00:00" : to);
+  const startSuffix = start.slice(start.indexOf(" "));
+  const endSuffix = end.slice(end.indexOf(" "));
+  return startSuffix === endSuffix && to !== "24:00"
+    ? `${start.slice(0, start.indexOf(" "))}–${end}`
+    : `${start}–${end}`;
+}
+
+const EXCEPTION_NAMES: Record<ExceptionKind, string> = {
+  block: "Bloqueado",
+  break: "Descanso",
+  extra_open: "Abre más temprano",
+};
+
+// "Descanso 1:00–2:00 p. m.", "Día bloqueado".
+export function describeException(exception: AgendaException): string {
+  if (exception.allDay) return "Día bloqueado";
+  return `${EXCEPTION_NAMES[exception.kind]} ${formatRange(exception.from, exception.to)}`;
+}

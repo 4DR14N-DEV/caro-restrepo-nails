@@ -48,15 +48,15 @@ pnpm --filter @caro/web dev   # http://127.0.0.1:4321
 
 ## Páginas
 
-| Página             | Quién      | Qué hace                                                                                                                           |
-| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/servicios`       | Pública    | Catálogo con precio y duración; al elegir varios muestra el total                                                                  |
-| `/reservar`        | Con sesión | Servicios → día → hora → confirmar; después, botón para avisar a Caro por WhatsApp. Sin sesión lleva a `/ingreso?next=/reservar`   |
-| `/mis-citas`       | Con sesión | Citas próximas e historial (últimas 20) con estado, servicios y total. Sin sesión lleva a `/ingreso?next=/mis-citas`               |
-| `/registro`        | Pública    | Crear cuenta con celular y contraseña; vuelve a `next` si es una ruta interna                                                      |
-| `/ingreso`         | Pública    | Ingresar; vuelve a `next` si es una ruta interna                                                                                   |
-| `/admin/agenda`    | Solo Caro  | Agenda por día, semana y mes; marcar completada, no asistió o cancelar; recordar y avisar por WhatsApp (la API responde 401 o 403) |
-| `/admin/servicios` | Solo Caro  | Crear, editar, activar y desactivar servicios (la API responde 401 o 403)                                                          |
+| Página             | Quién      | Qué hace                                                                                                                                                                                    |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/servicios`       | Pública    | Catálogo con precio y duración; al elegir varios muestra el total                                                                                                                           |
+| `/reservar`        | Con sesión | Servicios → día → hora → confirmar; después, botón para avisar a Caro por WhatsApp. Sin sesión lleva a `/ingreso?next=/reservar`                                                            |
+| `/mis-citas`       | Con sesión | Citas próximas e historial (últimas 20) con estado, servicios y total. Sin sesión lleva a `/ingreso?next=/mis-citas`                                                                        |
+| `/registro`        | Pública    | Crear cuenta con celular y contraseña; vuelve a `next` si es una ruta interna                                                                                                               |
+| `/ingreso`         | Pública    | Ingresar; vuelve a `next` si es una ruta interna                                                                                                                                            |
+| `/admin/agenda`    | Solo Caro  | Agenda por día, semana y mes; marcar completada, no asistió o cancelar; recordar y avisar por WhatsApp; bloquear días o franjas, descansos y abrir más temprano (la API responde 401 o 403) |
+| `/admin/servicios` | Solo Caro  | Crear, editar, activar y desactivar servicios (la API responde 401 o 403)                                                                                                                   |
 
 ## Comandos
 

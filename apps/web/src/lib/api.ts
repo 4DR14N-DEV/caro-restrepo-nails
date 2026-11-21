@@ -3,6 +3,8 @@ import type {
   Agenda,
   AgendaChange,
   AppointmentChange,
+  ExceptionRequest,
+  ExceptionResult,
   MarkedStatus,
   BookingRequest,
   BookingResult,
@@ -25,7 +27,7 @@ export type ApiResult<T> =
     };
 
 async function call<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
@@ -79,6 +81,10 @@ export const api = {
       "GET",
       `/api/admin/agenda?${new URLSearchParams({ from, to, ...(withCancelled ? { cancelled: "1" } : {}) })}`,
     ),
+  addException: (body: ExceptionRequest) =>
+    call<ExceptionResult>("POST", "/api/admin/exceptions", body),
+  removeException: (id: string) =>
+    call<null>("DELETE", `/api/admin/exceptions/${encodeURIComponent(id)}`),
   markAppointment: (id: string, status: MarkedStatus) =>
     call<AgendaChange>("PATCH", `/api/admin/appointments/${encodeURIComponent(id)}/status`, {
       status,
