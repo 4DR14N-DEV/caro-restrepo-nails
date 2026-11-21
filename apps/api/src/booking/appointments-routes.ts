@@ -107,7 +107,8 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
       withServices(db, history, current),
     ]);
     const result: MyAppointments = { upcoming: upcomingList, history: historyList };
-    res.json(result);
+    // Son datos personales: que no queden guardados en el navegador ni en intermediarios.
+    res.set("Cache-Control", "no-store").json(result);
   });
 
   // Reservar (RF06): la cita queda confirmada al instante si la hora está libre.

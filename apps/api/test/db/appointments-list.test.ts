@@ -100,6 +100,8 @@ describe("GET /api/appointments", () => {
     const response = await request(app).get("/api/appointments").set("Cookie", cookie);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ upcoming: [], history: [] });
+    // Son datos personales: el navegador ni ningún intermediario los guarda.
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   it("separa las próximas del historial, cada una en su orden y con su estado", async () => {
@@ -156,6 +158,30 @@ describe("GET /api/appointments", () => {
 
     expect(body.upcoming).toEqual([]);
     expect(body.history).toEqual([expect.objectContaining({ id: started, state: "past" })]);
+  });
+
+  it("una cita que empieza justo ahora ya no es próxima", async () => {
+    const { userId, cookie } = await signedIn("+573001234567");
+    const exact = await appointment(userId, "2026-11-20T15:00:00Z", ["Retiro"]);
+
+    const { body } = await request(app).get("/api/appointments").set("Cookie", cookie);
+
+    expect(body.upcoming).toEqual([]);
+    expect(body.history).toEqual([
+      expect.objectContaining({ id: exact, state: "past", time: "10:00" }),
+    ]);
+  });
+
+  it("los parámetros de la consulta no cambian de quién son las citas", async () => {
+    const ana = await signedIn("+573001234567");
+    const luisa = await signedIn("+573009876543", "Luisa");
+    await appointment(luisa.userId, "2026-11-24T15:00:00Z", ["Retiro"]);
+
+    const { body } = await request(app)
+      .get(`/api/appointments?clientId=${luisa.userId}&userId=${luisa.userId}`)
+      .set("Cookie", ana.cookie);
+
+    expect(body).toEqual({ upcoming: [], history: [] });
   });
 
   it("muestra solo las citas propias", async () => {
