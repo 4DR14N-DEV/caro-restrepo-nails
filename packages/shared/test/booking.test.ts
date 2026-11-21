@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminCancelMessage,
   bookingMessage,
+  reminderMessage,
   cancelMessage,
   rescheduleMessage,
   formatDay,
@@ -104,6 +106,27 @@ describe("mensajes de WhatsApp al cancelar y reprogramar", () => {
       }),
     ).toBe(
       "Hola Caro, soy Ana. Moví mi cita de Retiro del lunes 23 de noviembre a las 10:00 a. m. al martes 24 de noviembre a la 1:00 p. m.",
+    );
+  });
+});
+
+describe("mensajes de Caro a la clienta", () => {
+  const appointment = {
+    clientName: "Ana María",
+    services: ["Retiro", "Semipermanente manos"],
+    date: "2026-11-23",
+    time: "10:00",
+  };
+
+  it("avisa que Caro canceló la cita", () => {
+    expect(adminCancelMessage(appointment)).toBe(
+      "Hola Ana María, soy Caro. Tuve que cancelar tu cita de Retiro y Semipermanente manos del lunes 23 de noviembre a las 10:00 a. m. Escríbeme para buscar otro horario.",
+    );
+  });
+
+  it("recuerda la cita", () => {
+    expect(reminderMessage({ ...appointment, time: "13:00" })).toBe(
+      "Hola Ana María, te recuerdo tu cita de Retiro y Semipermanente manos el lunes 23 de noviembre a la 1:00 p. m. ¡Te espero!",
     );
   });
 });

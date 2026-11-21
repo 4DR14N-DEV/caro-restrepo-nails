@@ -1,6 +1,9 @@
 import type {
   AdminService,
+  Agenda,
+  AgendaChange,
   AppointmentChange,
+  MarkedStatus,
   BookingRequest,
   BookingResult,
   MyAppointments,
@@ -71,6 +74,15 @@ export const api = {
     ),
   book: (body: BookingRequest) => call<BookingResult>("POST", "/api/appointments", body),
   myAppointments: () => call<MyAppointments>("GET", "/api/appointments"),
+  agenda: (from: string, to: string, withCancelled: boolean) =>
+    call<Agenda>(
+      "GET",
+      `/api/admin/agenda?${new URLSearchParams({ from, to, ...(withCancelled ? { cancelled: "1" } : {}) })}`,
+    ),
+  markAppointment: (id: string, status: MarkedStatus) =>
+    call<AgendaChange>("PATCH", `/api/admin/appointments/${encodeURIComponent(id)}/status`, {
+      status,
+    }),
   cancelAppointment: (id: string) =>
     call<AppointmentChange>("POST", `/api/appointments/${encodeURIComponent(id)}/cancel`),
   rescheduleTimes: (id: string, date: string) =>
