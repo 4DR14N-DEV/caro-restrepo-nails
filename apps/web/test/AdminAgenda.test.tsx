@@ -336,3 +336,201 @@ describe("AdminAgenda: volver a la misma fecha", () => {
     },
   );
 });
+
+const exception = (values: Record<string, unknown>) => ({
+  id: "e1",
+  date: TODAY,
+  kind: "break",
+  from: "13:00",
+  to: "14:00",
+  allDay: false,
+  reason: null,
+  ...values,
+});
+
+const postBody = (fetchMock: ReturnType<typeof mockApi>) => {
+  const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+  return JSON.parse(String(post?.[1]?.body));
+};
+
+describe("AdminAgenda: horario del día", () => {
+  it("lista lo cargado con su tipo, franja y motivo, y «Quitar» lo borra", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": [
+        () =>
+          json(200, {
+            appointments: [],
+            exceptions: [
+              exception({ reason: "Almuerzo" }),
+              exception({ id: "e2", kind: "extra_open", from: "08:00", to: "09:00" }),
+            ],
+          }),
+        () =>
+          json(200, {
+            appointments: [],
+            exceptions: [exception({ id: "e2", kind: "extra_open", from: "08:00", to: "09:00" })],
+          }),
+      ],
+      "DELETE /api/admin/exceptions/e1": () => Promise.resolve(new Response(null, { status: 204 })),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    const [pause, early] = within(section).getAllByRole("listitem");
+    expect(pause?.textContent).toContain("Descanso 1:00–2:00 p. m. · Almuerzo");
+    expect(early?.textContent).toContain("Abre más temprano 8:00–9:00 a. m.");
+
+    await userEvent.click(within(nth([pause], 0)).getByRole("button", { name: "Quitar" }));
+
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true);
+    await vi.waitFor(() =>
+      expect(
+        within(screen.getByRole("region", { name: "Horario del día" })).getAllByRole("listitem"),
+      ).toHaveLength(1),
+    );
+  });
+
+  it("«Quitar» se deshabilita mientras borra: un doble toque manda un solo pedido", async () => {
+    let finish: (response: Response) => void = () => {};
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [exception({})] }),
+      "DELETE /api/admin/exceptions/e1": () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    const quitar = within(section).getByRole("button", { name: "Quitar" });
+    await userEvent.click(quitar);
+    await userEvent.click(quitar);
+
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1);
+    expect((quitar as HTMLButtonElement).disabled).toBe(true);
+    finish(new Response(null, { status: 204 }));
+  });
+
+  it("agrega un descanso con su franja y motivo", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": [
+        () => json(200, { appointments: [], exceptions: [] }),
+        () => json(200, { appointments: [], exceptions: [exception({ reason: "Almuerzo" })] }),
+      ],
+      "POST /api/admin/exceptions": () =>
+        json(201, { exception: exception({ reason: "Almuerzo" }) }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    await userEvent.selectOptions(within(section).getByLabelText("Qué"), "break");
+    await userEvent.selectOptions(within(section).getByLabelText("Desde"), "13:00");
+    await userEvent.selectOptions(within(section).getByLabelText("Hasta"), "14:00");
+    await userEvent.type(within(section).getByLabelText("Motivo (opcional)"), "Almuerzo");
+    await userEvent.click(within(section).getByRole("button", { name: "Guardar" }));
+
+    expect(postBody(fetchMock)).toEqual({
+      date: TODAY,
+      kind: "break",
+      from: "13:00",
+      to: "14:00",
+      reason: "Almuerzo",
+    });
+    expect(await within(section).findByText(/Descanso 1:00–2:00 p\. m\./)).toBeTruthy();
+  });
+
+  it("bloquear todo el día no pide horas; abrir más temprano pide solo desde", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [] }),
+      "POST /api/admin/exceptions": () => json(201, { exception: exception({}) }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    await userEvent.selectOptions(within(section).getByLabelText("Qué"), "block_day");
+    expect(within(section).queryByLabelText("Desde")).toBeNull();
+    expect(within(section).queryByLabelText("Hasta")).toBeNull();
+    await userEvent.click(within(section).getByRole("button", { name: "Guardar" }));
+    expect(postBody(fetchMock)).toEqual({ date: TODAY, kind: "block_day" });
+
+    fetchMock.mockClear();
+    await userEvent.selectOptions(within(section).getByLabelText("Qué"), "extra_open");
+    expect(within(section).queryByLabelText("Hasta")).toBeNull();
+    await userEvent.selectOptions(within(section).getByLabelText("Desde"), "08:00");
+    await userEvent.click(within(section).getByRole("button", { name: "Guardar" }));
+    expect(postBody(fetchMock)).toEqual({ date: TODAY, kind: "extra_open", from: "08:00" });
+  });
+
+  it("si choca con citas, muestra el aviso de la API", async () => {
+    const message = "Ya hay citas en esa franja. Muévelas o cancélalas primero.";
+    mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [] }),
+      "POST /api/admin/exceptions": () =>
+        json(409, { error: "exception_conflict", fields: { form: message } }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    await userEvent.selectOptions(within(section).getByLabelText("Qué"), "block_day");
+    await userEvent.click(within(section).getByRole("button", { name: "Guardar" }));
+
+    expect((await within(section).findByRole("alert")).textContent).toBe(message);
+  });
+
+  it("un día que ya pasó no se puede cambiar", async () => {
+    mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, { appointments: [], exceptions: [exception({ date: "2026-11-22" })] }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Día anterior" }));
+    const section = await screen.findByRole("region", { name: "Horario del día" });
+    expect(
+      within(section).getByText("No se puede cambiar el horario de un día que ya pasó."),
+    ).toBeTruthy();
+    expect(within(section).queryByRole("button", { name: "Guardar" })).toBeNull();
+    expect(within(section).queryByRole("button", { name: "Quitar" })).toBeNull();
+  });
+});
+
+describe("AdminAgenda: horario en la semana y el mes", () => {
+  it("la semana muestra una línea por cada elemento cargado", async () => {
+    mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, { appointments: [], exceptions: [exception({ reason: "Almuerzo" })] }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Semana" }));
+    const days = await screen.findAllByRole("region");
+    expect(days[0]?.textContent).toContain("Descanso 1:00–2:00 p. m. · Almuerzo");
+  });
+
+  it("el mes marca «Bloqueado» los días bloqueados completos", async () => {
+    mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, {
+          appointments: [],
+          exceptions: [
+            exception({
+              date: "2026-11-25",
+              kind: "block",
+              from: "00:00",
+              to: "24:00",
+              allDay: true,
+            }),
+            exception({ id: "e2", date: "2026-11-26" }),
+          ],
+        }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Mes" }));
+    const blocked = await screen.findByRole("button", {
+      name: "miércoles 25 de noviembre: 0 citas, bloqueado",
+    });
+    expect(blocked.textContent).toContain("Bloqueado");
+    expect(screen.getByRole("button", { name: "jueves 26 de noviembre: 0 citas" })).toBeTruthy();
+  });
+});

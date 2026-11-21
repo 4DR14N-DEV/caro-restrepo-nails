@@ -13,9 +13,10 @@ import { and, asc, eq, gte, inArray, lt, lte, ne, type SQL } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { requireAdmin } from "../auth/require-admin.js";
 import type { Database } from "../db/client.js";
-import { appointments, users } from "../db/schema.js";
+import { appointments, scheduleExceptions, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
+import { toAgendaException } from "./exceptions.js";
 import { serviceNamesByAppointment } from "./service-copies.js";
 
 const agendaColumns = {
@@ -83,17 +84,32 @@ export function adminAgendaRouter(db: Database, now: () => Date): Router {
     const { from, to } = parsed.data;
     const withCancelled = parsed.data.cancelled === "1";
 
-    const result: Agenda = {
-      appointments: await loadAgenda(
+    const rangeStart = bogotaInstant(from, "00:00");
+    const rangeEnd = bogotaInstant(addDays(to, 1), "00:00");
+    const current = now();
+    const [list, exceptions] = await Promise.all([
+      loadAgenda(
         db,
         and(
-          gte(appointments.startAt, bogotaInstant(from, "00:00")),
-          lt(appointments.startAt, bogotaInstant(addDays(to, 1), "00:00")),
+          gte(appointments.startAt, rangeStart),
+          lt(appointments.startAt, rangeEnd),
           withCancelled ? undefined : ne(appointments.status, "cancelled"),
         ),
-        now(),
+        current,
       ),
-    };
+      // Bloqueos, descansos y aperturas más temprano que empiezan en el rango (RF13, RF14).
+      db
+        .select()
+        .from(scheduleExceptions)
+        .where(
+          and(
+            gte(scheduleExceptions.startsAt, rangeStart),
+            lt(scheduleExceptions.startsAt, rangeEnd),
+          ),
+        )
+        .orderBy(asc(scheduleExceptions.startsAt), asc(scheduleExceptions.id)),
+    ]);
+    const result: Agenda = { appointments: list, exceptions: exceptions.map(toAgendaException) };
     // Datos de las clientas: que no queden guardados en ningún lado.
     res.set("Cache-Control", "no-store").json(result);
   });

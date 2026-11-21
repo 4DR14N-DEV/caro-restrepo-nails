@@ -13,7 +13,7 @@ import {
   type MyAppointment,
   type MyAppointments,
 } from "@caro/shared";
-import { and, asc, desc, eq, gt, gte, isNotNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNotNull, lte, ne, or } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
@@ -21,6 +21,7 @@ import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "..
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
+import { limitLockWait, lockDay } from "./locks.js";
 import { serviceUnavailable, slotTaken } from "./responses.js";
 import { serviceNamesByAppointment } from "./service-copies.js";
 import { loadActiveServices, loadSettings, offeredTimes } from "./schedule.js";
@@ -68,10 +69,6 @@ const movable = (row: Row, current: Date, rules: Rules) =>
   canRescheduleOn(row.startAt, current, rules);
 
 const minutesOf = (row: Row) => (row.endAt.getTime() - row.startAt.getTime()) / MINUTE;
-
-// Turno de una fecha: las escrituras de citas de un mismo día van de a una (ver reservar).
-const lockDay = (tx: Pick<Database, "execute">, date: string) =>
-  tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking:${date}`}))`);
 
 function notFound(res: Response): void {
   res.status(404).json({ error: "not_found" });
@@ -264,7 +261,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     let outcome: { moved: Row } | "too_late" | "slot_taken";
     try {
       outcome = await db.transaction(async (tx) => {
-        await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
+        await limitLockWait(tx);
         // Turnos del día viejo y del nuevo, siempre en orden de fecha: dos reprogramaciones
         // cruzadas (lunes → martes y martes → lunes) los toman igual y no se traban.
         for (const day of [...new Set([bogotaDate(own.startAt), date])].sort()) {
@@ -336,7 +333,7 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
         // espera a que la primera termine y calcula las horas ya con esa cita, así que no
         // hay carreras ni interbloqueos entre reservas. La espera tiene un tope: si el turno
         // no se libera a tiempo, la reserva se rinde en vez de ocupar una conexión sin fin.
-        await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
+        await limitLockWait(tx);
         await lockDay(tx, date);
 
         // La disponibilidad se vuelve a calcular aquí, dentro del turno: solo vale una hora

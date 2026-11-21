@@ -2,6 +2,7 @@ import {
   addDays,
   adminCancelMessage,
   bogotaDate,
+  describeException,
   formatDay,
   formatMonth,
   formatTime,
@@ -10,11 +11,13 @@ import {
   weekDays,
   whatsappLink,
   type AgendaAppointment,
+  type AgendaException,
   type MarkedStatus,
 } from "@caro/shared";
 import { useCallback, useEffect, useState } from "react";
 import { api, formErrorMessage } from "../lib/api";
 import { AgendaCard } from "./AgendaCard";
+import { DaySchedule } from "./DaySchedule";
 
 type View = "day" | "week" | "month";
 
@@ -23,7 +26,7 @@ type Load =
   | { state: "signed-out" }
   | { state: "forbidden" }
   | { state: "error"; message: string }
-  | { state: "ready"; appointments: AgendaAppointment[] };
+  | { state: "ready"; appointments: AgendaAppointment[]; exceptions: AgendaException[] };
 
 const LOGIN_URL = `/ingreso?next=${encodeURIComponent("/admin/agenda")}`;
 
@@ -80,7 +83,13 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
     let current = true;
     void api.agenda(from, to, withCancelled).then((result) => {
       if (!current) return;
-      if (result.ok) return setLoad({ state: "ready", appointments: result.data.appointments });
+      if (result.ok) {
+        return setLoad({
+          state: "ready",
+          appointments: result.data.appointments,
+          exceptions: result.data.exceptions ?? [],
+        });
+      }
       if (result.status === 401) return setLoad({ state: "signed-out" });
       if (result.status === 403) return setLoad({ state: "forbidden" });
       setLoad({ state: "error", message: formErrorMessage(result) });
@@ -112,7 +121,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         setLoad((previous) =>
           previous.state === "ready"
             ? {
-                state: "ready",
+                ...previous,
                 appointments: previous.appointments
                   .map((item) => (item.id === updated.id ? updated : item))
                   // Sin "Mostrar canceladas", la cancelada deja la lista.
@@ -224,12 +233,20 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         </div>
       )}
       {load.state === "ready" && view === "day" && (
-        <DayView date={anchor} appointments={load.appointments} onMark={mark} />
+        <DayView
+          date={anchor}
+          today={today}
+          appointments={load.appointments}
+          exceptions={load.exceptions}
+          onMark={mark}
+          onScheduleChanged={() => setReload((count) => count + 1)}
+        />
       )}
       {load.state === "ready" && view === "week" && (
         <WeekView
           anchor={anchor}
           appointments={load.appointments}
+          exceptions={load.exceptions}
           onOpen={(date) => go("day", date)}
         />
       )}
@@ -237,6 +254,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         <MonthView
           anchor={anchor}
           appointments={load.appointments}
+          exceptions={load.exceptions}
           onOpen={(date) => go("day", date)}
         />
       )}
@@ -246,12 +264,18 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
 
 function DayView({
   date,
+  today,
   appointments,
+  exceptions,
   onMark,
+  onScheduleChanged,
 }: {
   date: string;
+  today: string;
   appointments: AgendaAppointment[];
+  exceptions: AgendaException[];
   onMark: (appointment: AgendaAppointment, status: MarkedStatus) => Promise<void>;
+  onScheduleChanged: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -269,6 +293,12 @@ function DayView({
           ))}
         </ul>
       )}
+      <DaySchedule
+        date={date}
+        today={today}
+        exceptions={exceptions.filter((exception) => exception.date === date)}
+        onChanged={onScheduleChanged}
+      />
     </div>
   );
 }
@@ -277,10 +307,12 @@ function DayView({
 function WeekView({
   anchor,
   appointments,
+  exceptions,
   onOpen,
 }: {
   anchor: string;
   appointments: AgendaAppointment[];
+  exceptions: AgendaException[];
   onOpen: (date: string) => void;
 }) {
   const days = weekDays(anchor);
@@ -303,6 +335,14 @@ function WeekView({
                 Ver día
               </button>
             </div>
+            {exceptions
+              .filter((exception) => exception.date === date)
+              .map((exception) => (
+                <p key={exception.id} className="text-sm text-neutral-600">
+                  {describeException(exception)}
+                  {exception.reason && ` · ${exception.reason}`}
+                </p>
+              ))}
             {ofDay.length === 0 ? (
               <p className="text-sm text-neutral-600">Sin citas</p>
             ) : (
@@ -324,14 +364,17 @@ function WeekView({
 
 const WEEKDAY_INITIALS = ["L", "M", "M", "J", "V", "S", "D"];
 
-// El mes: cuántas citas agendadas tiene cada día; tocar un día lo abre.
+// El mes: cuántas citas agendadas tiene cada día y cuáles están bloqueados enteros; tocar
+// un día lo abre.
 function MonthView({
   anchor,
   appointments,
+  exceptions,
   onOpen,
 }: {
   anchor: string;
   appointments: AgendaAppointment[];
+  exceptions: AgendaException[];
   onOpen: (date: string) => void;
 }) {
   const month = anchor.slice(0, 7);
@@ -353,11 +396,14 @@ function MonthView({
           .weeks.flat()
           .map((date) => {
             const count = scheduled(date);
+            const blocked = exceptions.some(
+              (exception) => exception.date === date && exception.allDay,
+            );
             return (
               <button
                 key={date}
                 type="button"
-                aria-label={`${formatDay(date)}: ${count} ${count === 1 ? "cita" : "citas"}`}
+                aria-label={`${formatDay(date)}: ${count} ${count === 1 ? "cita" : "citas"}${blocked ? ", bloqueado" : ""}`}
                 onClick={() => onOpen(date)}
                 className={`flex h-14 flex-col items-center justify-center rounded-lg border ${
                   date.startsWith(month)
@@ -367,6 +413,7 @@ function MonthView({
               >
                 <span>{Number(date.slice(8))}</span>
                 {count > 0 && <span className="text-xs font-medium">{count}</span>}
+                {blocked && <span className="text-[10px] text-neutral-600">Bloqueado</span>}
               </button>
             );
           })}
