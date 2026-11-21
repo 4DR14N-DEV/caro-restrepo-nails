@@ -22,8 +22,23 @@ export interface AgendaAppointment {
   canCancel: boolean;
 }
 
+// Lo que Caro carga para un día (RF13, RF14). Un bloqueo de todo el día va de 00:00 a 24:00.
+export type ExceptionKind = "block" | "break" | "extra_open";
+
+export interface AgendaException {
+  id: string;
+  date: string;
+  kind: ExceptionKind;
+  from: string;
+  to: string;
+  allDay: boolean;
+  // Solo para Caro; las clientas nunca lo ven.
+  reason: string | null;
+}
+
 export interface Agenda {
   appointments: AgendaAppointment[];
+  exceptions: AgendaException[];
 }
 
 // Un mes en el calendario ocupa hasta 6 semanas.
@@ -70,3 +85,56 @@ export interface AgendaChange {
 export const notStartedMessage = "Solo puedes marcarla cuando la cita ya empezó.";
 export const cancelledIsFinalMessage = "Esta cita está cancelada y no se puede cambiar.";
 export const onlyScheduledCancelMessage = "Solo se puede cancelar una cita agendada.";
+
+const quarterMessage = "Elige una hora en múltiplos de 15 minutos.";
+const quarterTime = (missing: string) =>
+  z.string(missing).regex(/^([01]\d|2[0-3]):(00|15|30|45)$/, quarterMessage);
+const startMessage = "Elige la hora de inicio.";
+const endMessage = "Elige la hora de fin.";
+
+export const EARLIEST_OPENING = "08:00";
+export const REASON_MAX_LENGTH = 100;
+
+// Cargar algo en el horario de un día. "block_day" bloquea el día entero; "block" y
+// "break" piden desde y hasta; "extra_open" pide solo desde (hasta la apertura habitual).
+export const exceptionRequestSchema = z
+  .strictObject(
+    {
+      date: bookingDateSchema,
+      kind: z.enum(["block_day", "block", "break", "extra_open"], "Elige qué quieres cargar."),
+      from: quarterTime(startMessage).optional(),
+      to: quarterTime(endMessage).optional(),
+      reason: z
+        .string()
+        .trim()
+        .max(REASON_MAX_LENGTH, `El motivo puede tener hasta ${REASON_MAX_LENGTH} caracteres.`)
+        .optional(),
+    },
+    onlyKnownFields,
+  )
+  .superRefine((input, context) => {
+    const issue = (path: string, message: string) =>
+      context.addIssue({ code: "custom", path: [path], message });
+    if (input.kind === "block" || input.kind === "break") {
+      if (!input.from) issue("from", startMessage);
+      if (!input.to) issue("to", endMessage);
+      if (input.from && input.to && input.to <= input.from) {
+        issue("to", "La hora de fin tiene que ser después de la de inicio.");
+      }
+    }
+    if (input.kind === "extra_open") {
+      if (!input.from) issue("from", startMessage);
+      else if (input.from < EARLIEST_OPENING) issue("from", "Se puede abrir desde las 8:00.");
+    }
+  });
+
+export type ExceptionRequest = z.output<typeof exceptionRequestSchema>;
+
+export interface ExceptionResult {
+  exception: AgendaException;
+}
+
+export const exceptionConflictMessage =
+  "Ya hay citas en esa franja. Muévelas o cancélalas primero.";
+export const pastDayMessage = "No se puede cambiar el horario de un día que ya pasó.";
+export const closedDayMessage = "Ese día no abre: no se puede abrir más temprano.";

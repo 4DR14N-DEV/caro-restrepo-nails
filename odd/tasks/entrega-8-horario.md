@@ -1,0 +1,30 @@
+Objetivo: entrega 8 de Caro Restrepo Nails: Caro bloquea días o franjas y programa descansos (RF13) y abre más temprano (RF14) desde su agenda.
+Rama: `feat/entrega-8-horario` · Estrategia de entrega: ask-on-risk (un PR) · Runner de tests: Vitest (pnpm).
+
+## Specs
+
+- S1 — Dónde (L2 #1): "En la vista de día de `/admin/agenda`, una sección "Horario del día" con lo cargado para ese día y un formulario "Agregar"."
+- S2 — RF13: "Bloquear días o franjas horarias y programar descansos (puntuales, día por día)." RF14: "Abrir más temprano (desde las 8:00) los días que quiera." (L2 #2) ""Bloquear todo el día", "Bloquear una franja", "Descanso" y "Abrir más temprano". Cada cosa vale para un solo día (puntual, día por día, sin repetición)."
+- S3 — Horas (L2 #3): ""Desde" y "hasta" en múltiplos de 15 minutos, dentro del mismo día. "Abrir más temprano" pide solo la hora (desde las 8:00) y se extiende hasta la apertura habitual de ese día. Solo se puede en días que abren: no abre domingos ni festivos."
+- S4 — Motivo (L2 #4): "Opcional, hasta 100 caracteres ("Cita médica"). Se ve solo en la agenda, nunca para las clientas."
+- S5 — Si choca con citas (L2 #5): "Un bloqueo o descanso que pisa citas agendadas se rechaza con "Ya hay citas en esa franja. Muévelas o cancélalas primero.""
+- S6 — Fechas (L2 #6): "Solo de hoy en adelante; el pasado no se toca."
+- S7 — Sin carreras (L2 #7): "Guardar toma el turno del día, el mismo que las reservas, así ninguna clienta reserva justo en la franja mientras Caro la bloquea. Esto cierra el pendiente de pulido 6."
+- S8 — Quitar (L2 #8): "Cada elemento cargado tiene "Quitar"; al quitarlo, las horas vuelven a ofrecerse solas."
+- S9 — En la agenda (L2 #9): "Vista de día: la lista con hora, tipo y motivo. Vista de semana: una línea por cada elemento ("Descanso 1:00–2:00 p. m."). Vista de mes: los días bloqueados completos se marcan "Bloqueado"."
+- S10 — Fuera de alcance (L2 #10): "Horario base y margen (RF15), descansos que se repiten, y crear o mover citas a nombre de una clienta (RF11, entrega 9)."
+
+## Tasks
+
+| ID  | Specs            | Ruta   | Estado    | Commit |
+| --- | ---------------- | ------ | --------- | ------ |
+| T1  | S2–S8 (API)      | inline | pendiente |        |
+| T2  | S1, S8, S9 (web) | inline | pendiente |        |
+
+Ruta: todo inline; T2 depende de T1. Riesgo previsto: ítems 2 (solo admin) y 4 (turno del día) en T1.
+
+## Log
+
+- L1 (2026-11-21, usuario): "dale, arranquemos la entrega 8" (RF13 y RF14, según la partición de la entrega 7).
+- L2 (2026-11-21, usuario): "esta perfecto, dale" (aprueba la tabla de 10 decisiones, citadas en S1–S10).
+- L3: T1. `POST /api/admin/exceptions` solo admin, `{ date, kind, from?, to?, reason? }` (estricto): "block_day" guarda un bloqueo de 00:00 a 24:00; "block" y "break" piden desde y hasta (múltiplos de 15 minutos, fin después del inicio); "extra_open" pide solo desde (desde las 8:00, "Se puede abrir desde las 8:00.") y va hasta la apertura habitual del día; si el día no abre (domingo, festivo, sin horario) → 409 `closed_day` "Ese día no abre: no se puede abrir más temprano."; si la hora no es antes de la apertura → 409 `not_earlier` "Elige una hora antes de la apertura de ese día (9:00 a. m.).". Motivo opcional hasta 100 caracteres. Fecha pasada → 409 `past_day` "No se puede cambiar el horario de un día que ya pasó.". Dentro de la transacción toma el turno del día (el mismo de las reservas) y, para bloqueos y descansos, rechaza si pisa una cita agendada (la cita sin su margen) → 409 `exception_conflict` "Ya hay citas en esa franja. Muévelas o cancélalas primero.". Responde 201 `{ exception }` (`AgendaException`: fecha, tipo, desde, hasta —"24:00" para la medianoche—, `allDay`, motivo). `DELETE /api/admin/exceptions/:id`: 204; inexistente o mal formado 404; del pasado 409; también toma el turno (quitar una apertura cambia las horas libres). La agenda trae `exceptions` del rango. `lockDay` y `limitLockWait` pasan a `booking/locks.ts` (los usan reservar, reprogramar y el horario). Cierra el pendiente de pulido 6. RED 11 → verdes. Mutaciones: sin el turno → falla "guarda con el turno del día"; sin revisar choques → fallan 2; sin `requireAdmin` → fallan 2; restaurado. Chequeos: test:db 213/213, test 175/175, typecheck, lint y formato en verde.
