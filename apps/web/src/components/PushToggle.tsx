@@ -43,8 +43,17 @@ export function PushToggle({ browser = browserPush }: { browser?: PushBrowser })
       }
       if (browser.permission() === "denied") return show({ kind: "message", text: BLOCKED });
 
-      const current = await browser.subscription(publicKey).catch(() => null);
-      if (!current) return show({ kind: "off", publicKey });
+      const found = await browser.subscription(publicKey).catch(() => null);
+      if (!found) return show({ kind: "off", publicKey });
+      const { current } = found;
+      // Se cambiaron las claves del servidor: la suscripción vieja ya no recibe avisos. Se
+      // borra del servidor (el servicio de push no la da por vencida) y del navegador, y Caro
+      // los vuelve a activar.
+      if (!found.sameKey) {
+        await api.deletePushSubscription(current.endpoint);
+        await browser.unsubscribe().catch(() => undefined);
+        return show({ kind: "off", publicKey });
+      }
       // Se guarda otra vez por si el servidor la había borrado (vencida o de otra cuenta). Si
       // no se pudo, el servidor no tiene a dónde enviar: no se muestra como activa.
       const saved = await api.savePushSubscription(current);

@@ -10,8 +10,11 @@ export type PushSupport = "ready" | "ios-install" | "unsupported";
 export interface PushBrowser {
   support(): PushSupport;
   permission(): NotificationPermission;
-  // La suscripción de este dispositivo, si ya tiene una con la clave actual del servidor.
-  subscription(publicKey: string): Promise<PushSubscriptionInput | null>;
+  // La suscripción de este dispositivo, si ya tiene una, y si se hizo con la clave actual del
+  // servidor (si cambiaron las claves, la vieja ya no sirve).
+  subscription(
+    publicKey: string,
+  ): Promise<{ current: PushSubscriptionInput; sameKey: boolean } | null>;
   // Pide el permiso (si hace falta) y suscribe el dispositivo con la clave del servidor.
   subscribe(publicKey: string): Promise<PushSubscriptionInput>;
   unsubscribe(): Promise<void>;
@@ -41,7 +44,15 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+// Compara la clave con la que se suscribió el navegador con la del servidor. Si el navegador
+// no la informa, se da por buena: mejor eso que quitar un dispositivo que sí funciona.
+export function sameServerKey(
+  applicationServerKey: ArrayBuffer | null,
+  publicKey: string,
+): boolean {
+  if (!applicationServerKey) return true;
+  const a = new Uint8Array(applicationServerKey);
+  const b = base64UrlToBytes(publicKey);
   return a.length === b.length && a.every((byte, i) => byte === b[i]);
 }
 
@@ -65,14 +76,10 @@ export const browserPush: PushBrowser = {
   async subscription(publicKey) {
     const current = await (await registration()).pushManager.getSubscription();
     if (!current) return null;
-    // Si se cambiaron las claves del servidor, la suscripción vieja ya no sirve: se quita y
-    // Caro vuelve a activar los avisos.
-    const key = current.options.applicationServerKey;
-    if (key && !sameBytes(new Uint8Array(key), base64UrlToBytes(publicKey))) {
-      await current.unsubscribe();
-      return null;
-    }
-    return toInput(current);
+    return {
+      current: toInput(current),
+      sameKey: sameServerKey(current.options.applicationServerKey, publicKey),
+    };
   },
   async subscribe(publicKey) {
     const { pushManager } = await registration();

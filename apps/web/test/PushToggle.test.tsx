@@ -19,17 +19,22 @@ function fakeBrowser({
   permission = "default",
   subscribed = false,
   subscribeFails = false,
+  otherKey = false,
 }: {
   support?: PushSupport;
   permission?: NotificationPermission;
   subscribed?: boolean;
   subscribeFails?: boolean;
+  // La suscripción del navegador se hizo con otra clave del servidor.
+  otherKey?: boolean;
 } = {}) {
   const state = { permission, subscription: subscribed ? device : null };
   const browser: PushBrowser = {
     support: () => support,
     permission: () => state.permission,
-    subscription: vi.fn(async () => state.subscription),
+    subscription: vi.fn(async () =>
+      state.subscription ? { current: state.subscription, sameKey: !otherKey } : null,
+    ),
     subscribe: vi.fn(async () => {
       if (subscribeFails) {
         state.permission = "denied";
@@ -113,6 +118,20 @@ describe("PushToggle", () => {
 
     await screen.findByText("Los avisos están activos en este dispositivo.");
     expect(browser.subscription).toHaveBeenCalledWith("clave-publica");
+  });
+
+  it("si la suscripción es de otra clave, la borra del servidor y del navegador", async () => {
+    const fetchMock = mockApi();
+    const browser = fakeBrowser({ permission: "granted", subscribed: true, otherKey: true });
+    render(<PushToggle browser={browser} />);
+
+    expect(
+      await screen.findByRole("button", { name: "Activar avisos en este dispositivo" }),
+    ).toBeTruthy();
+    const [deleted] = calls(fetchMock, "POST /api/admin/push/subscription/delete");
+    expect(JSON.parse(String(deleted?.[1]?.body))).toEqual({ endpoint: device.endpoint });
+    expect(browser.unsubscribe).toHaveBeenCalled();
+    expect(calls(fetchMock, "PUT /api/admin/push/subscription")).toHaveLength(0);
   });
 
   it("desactivar borra la suscripción del servidor y del navegador", async () => {
