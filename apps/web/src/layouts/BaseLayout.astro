@@ -7,9 +7,12 @@ interface Props {
   description: string;
   // false en la portada: el letrero grande va en la página y el encabezado solo trae el tema.
   brand?: boolean;
+  // Consultas a la API que la página hace al cargar: el navegador las pide apenas llega el
+  // HTML, mientras baja el JavaScript, y el componente encuentra la respuesta lista.
+  preload?: string[];
 }
 
-const { title, description, brand = true } = Astro.props;
+const { title, description, brand = true, preload = [] } = Astro.props;
 ---
 
 <!doctype html>
@@ -32,6 +35,12 @@ const { title, description, brand = true } = Astro.props;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#faf6f3" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1e1419" media="(prefers-color-scheme: dark)" />
+    {
+      // crossorigin="anonymous" = credenciales del mismo sitio, igual que `fetch` en lib/api.ts:
+      // si no coinciden, el navegador no reutiliza la respuesta.
+      preload.map((href) => <link rel="preload" href={href} as="fetch" crossorigin="anonymous" />)
+    }
+    <slot name="head" />
   </head>
   <body class="min-h-dvh bg-canvas font-sans text-ink antialiased">
     <SiteHeader brand={brand} />

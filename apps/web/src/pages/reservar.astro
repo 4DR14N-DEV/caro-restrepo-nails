@@ -4,6 +4,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
+  preload={["/api/auth/me", "/api/services", "/api/booking/days"]}
   title="Reservar · Caro Restrepo Nails"
   description="Elige tus servicios, el día y la hora, y reserva tu cita con Caro Restrepo Nails."
 >

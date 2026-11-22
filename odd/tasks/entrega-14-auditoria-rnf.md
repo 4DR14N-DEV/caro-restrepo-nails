@@ -14,12 +14,12 @@ Rama: `feat/entrega-14-auditoria-rnf` · Estrategia de entrega: ask-on-risk · R
 
 ## Tasks
 
-| ID  | Specs          | Ruta   | Estado    | Commit      |
-| --- | -------------- | ------ | --------- | ----------- |
-| T1  | S2–S5, S7      | inline | hecha     | ver git log |
-| T2  | S1, S5, S7, S8 | inline | hecha     | ver git log |
-| T3  | S1, S5, S7, S8 | inline | pendiente | —           |
-| T4  | S6             | inline | pendiente | —           |
+| ID  | Specs          | Ruta   | Estado  | Commit      |
+| --- | -------------- | ------ | ------- | ----------- |
+| T1  | S2–S5, S7      | inline | hecha   | 87f3166     |
+| T2  | S1, S5, S7, S8 | inline | hecha   | 87f3166     |
+| T3  | S1, S5, S7, S8 | inline | parcial | ver git log |
+| T4  | S6             | inline | hecha   | 87f3166     |
 
 Ruta: todo inline. Riesgo previsto: ítem 6 (un cambio de contraste o tamaño no lo atrapa ningún test: capturas y revisión del usuario en el preview).
 
@@ -50,3 +50,5 @@ Hallazgos: accesibilidad sin fallas en ninguna página ni tema. Rendimiento: las
 
 - L3: T1. Entorno: servidor temporal fuera del repo que sirve `apps/web/dist` con compresión (br/gzip) y caché larga para `/_astro`, y reenvía `/api` a la API local; Brave sin interfaz con puerto de depuración (claro en 9222, oscuro en 9223 con `preferredColorScheme=0`); sesión por cookie (`--extra-headers`) con las cuentas de prueba locales. 22 mediciones; la primera corrida en claro tuvo ruido de CPU (tests corriendo a la vez) y se repitió con la máquina quieta. Resultados en la sección Resultados.
 - L4: T2 y T4 (accesibilidad). Lighthouse no encontró fallas; la revisión a mano sí: "Quitar" (bloqueos del día, `DaySchedule`) y "Cambiar" (clienta, `AppointmentForm`) medían 36 px → 44 px; "Volver al inicio" tras reservar y el teléfono en Clientas, enlaces sueltos, ahora con 44 px de alto (los enlaces dentro de una oración quedan exceptuados). Errores no anunciados: el de aceptar la política en el registro ahora se asocia a la casilla (`aria-describedby`), y los del horario y las reglas en el panel llevan `role="alert"`. Ya estaban bien: todos los campos tienen etiqueta, los demás errores se anuncian, foco visible y animación con "reducir movimiento". RED: RegisterForm 1 y AdminSchedule 1 → verdes.
+- L5: T3 (rendimiento). `packages/shared` declara `"sideEffects": false`: Zod (83 KB) ya no se descarga en Reservar, Agenda ni el catálogo; Mis citas lo sigue cargando porque "Mi cuenta" valida la contraseña. `BaseLayout` acepta `preload` (`<link rel="preload" as="fetch" crossorigin="anonymous">`, mismas credenciales que `fetch` en `lib/api.ts`): Mis citas precarga `/api/auth/me` y `/api/appointments`; Reservar, `/api/auth/me`, `/api/services` y `/api/booking/days` (antes iban en dos tandas); la Agenda calcula en un script en línea el día (`?dia=` o hoy en Bogotá) y precarga `/api/admin/agenda?from=…&to=…`. Las precargas se consumen (sin pedidos duplicados). Nueva medición de las tres páginas (dos corridas por tema): rendimiento 81–88, LCP ~4 s, sin cambio. Diagnóstico: Brave (snap) recibe los archivos comprimidos (`br`) pero los informa con el tamaño descomprimido (HTML 23 KB en vez de ~5 KB; React 208 KB en vez de 57 KB), y la simulación de Lighthouse calcula los tiempos con esos tamaños, así que infla las descargas 3–4 veces; con `--throttling-method=devtools` la navegación se corta (`PROTOCOL_TIMEOUT`). Accesibilidad siguió en 100.
+- L6 (2026-11-22, usuario): ante la opción de descargar Chrome for Testing para medir con números fieles, eligió "No, dejalo así". Se conservan las mejoras de rendimiento (menos JavaScript y datos pedidos antes) y queda **sin confirmar** con números fieles si Reservar, Mis citas y Agenda llegan a 90 (en la simulación inflada: 81–88); el resto de las páginas está en 90 o más en al menos una corrida limpia. Chequeos: test shared 70/70, api 36/36, web 167/167, typecheck, lint, formato y build en verde.

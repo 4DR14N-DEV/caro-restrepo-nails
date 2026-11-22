@@ -4,6 +4,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
+  preload={["/api/auth/me", "/api/appointments"]}
   title="Mis citas · Caro Restrepo Nails"
   description="Tus citas próximas y tu historial en Caro Restrepo Nails."
 >

@@ -7,6 +7,24 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   title="Agenda · Panel de Caro"
   description="Panel de Caro Restrepo Nails para ver la agenda y marcar las citas."
 >
+  <!--
+    Pide ya la agenda del día que se va a mostrar (el de ?dia= o hoy en Bogotá), con la misma
+    dirección que arma AdminAgenda, para que llegue mientras baja el JavaScript.
+  -->
+  <script is:inline slot="head">
+    (function () {
+      var day = new URLSearchParams(location.search).get("dia");
+      if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        day = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+      }
+      var link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "fetch";
+      link.crossOrigin = "anonymous";
+      link.href = "/api/admin/agenda?" + new URLSearchParams({ from: day, to: day });
+      document.head.appendChild(link);
+    })();
+  </script>
   <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
     <h1 class="text-3xl">Agenda</h1>
     <AdminAgenda client:load />
