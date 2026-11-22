@@ -35,7 +35,7 @@ afterAll(async () => {
   await database.pool.end();
 });
 
-const { signedIn, appointment } = appointmentHelpers(() => database);
+const { signedIn, service, appointment, waitForBlocked } = appointmentHelpers(() => database);
 
 // Una clienta con contraseña real y dos sesiones abiertas.
 async function client() {
@@ -183,5 +183,101 @@ describe("POST /api/auth/account/delete", () => {
       fields: { currentPassword: "Escribe tu contraseña actual." },
     });
     expect(await database.db.select().from(rateLimits)).toEqual([]);
+  });
+});
+
+// Dos dispositivos de la misma clienta a la vez. Una conexión aparte retiene las sesiones de
+// la clienta: el borrado queda detenido después de bloquear su cuenta y antes de terminar,
+// y mientras tanto llega el otro pedido.
+describe("borrar la cuenta mientras llega otro pedido", () => {
+  async function whileDeleting<T>(
+    userId: string,
+    cookie: string,
+    other: () => Promise<T>,
+    blockedQuery: string,
+  ) {
+    const holder = await database.pool.connect();
+    try {
+      await holder.query("BEGIN");
+      await holder.query("SELECT 1 FROM sessions WHERE user_id = $1 FOR UPDATE", [userId]);
+      const deleting = remove(cookie, { currentPassword: CURRENT }).then((r) => r);
+      await waitForBlocked('delete from "sessions"');
+      const pending = other();
+      await waitForBlocked(blockedQuery);
+      await holder.query("COMMIT");
+      return await Promise.all([deleting, pending]);
+    } finally {
+      holder.release();
+    }
+  }
+
+  const scheduledOf = async (id: string) =>
+    (await database.db.select().from(appointments).where(eq(appointments.clientId, id))).filter(
+      (row) => row.status === "scheduled",
+    );
+
+  it("una reserva de la clienta no queda agendada en la cuenta borrada", async () => {
+    const ana = await client();
+    const other = `session=${await createSession(database.db, ana.id)}`;
+    const manos = await service("Semipermanente manos");
+
+    const [deleted, booked] = await whileDeleting(
+      ana.id,
+      ana.here,
+      () =>
+        request(app)
+          .post("/api/appointments")
+          .set("Cookie", other)
+          .send({ serviceIds: [manos.id], date: "2026-11-25", time: "10:00" })
+          .then((r) => r),
+      'select "id" from "users"',
+    );
+    expect(deleted.status).toBe(204);
+    expect(booked.status).toBe(401);
+    expect(await scheduledOf(ana.id)).toEqual([]);
+  });
+
+  it("una cita que Caro agenda a su nombre no queda en la cuenta borrada", async () => {
+    const ana = await client();
+    const caro = await signedIn("+573007445676", "Caro Restrepo", "admin");
+    const manos = await service("Semipermanente manos");
+
+    const [deleted, created] = await whileDeleting(
+      ana.id,
+      ana.here,
+      () =>
+        request(app)
+          .post("/api/admin/appointments")
+          .set("Cookie", caro.cookie)
+          .send({ clientId: ana.id, serviceIds: [manos.id], date: "2026-11-25", time: "10:00" })
+          .then((r) => r),
+      'select "id" from "users"',
+    );
+    expect(deleted.status).toBe(204);
+    expect(created.status).toBe(409);
+    expect(created.body.error).toBe("client_unavailable");
+    expect(await scheduledOf(ana.id)).toEqual([]);
+  });
+
+  it("un cambio de contraseña no le deja contraseña a la cuenta borrada", async () => {
+    const ana = await client();
+    const other = `session=${await createSession(database.db, ana.id)}`;
+
+    const [deleted, changed] = await whileDeleting(
+      ana.id,
+      ana.here,
+      () =>
+        request(app)
+          .post("/api/auth/password")
+          .set("Cookie", other)
+          .send({ currentPassword: CURRENT, newPassword: "nueva-clave-2" })
+          .then((r) => r),
+      'update "users"',
+    );
+    expect(deleted.status).toBe(204);
+    expect(changed.status).toBe(401);
+    const row = await userRow(ana.id);
+    expect(row?.anonymizedAt).toBeInstanceOf(Date);
+    expect(row?.passwordHash).toBeNull();
   });
 });

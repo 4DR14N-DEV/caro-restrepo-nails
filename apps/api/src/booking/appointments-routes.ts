@@ -15,6 +15,7 @@ import {
 } from "@caro/shared";
 import { and, asc, desc, eq, gt, gte, isNotNull, lte, ne, or } from "drizzle-orm";
 import { Router, type Response } from "express";
+import { holdActiveAccount } from "../auth/delete-account.js";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
 import { writeConflict } from "../db/errors.js";
@@ -27,6 +28,9 @@ import { serviceNamesByAppointment } from "./service-copies.js";
 import { loadActiveServices, loadSettings, offeredTimes } from "./schedule.js";
 
 const HOUR = 60 * MINUTE;
+
+// La reserva se rindió porque la cuenta se borró mientras tanto.
+const ACCOUNT_GONE = "account_gone";
 
 type Rules = Awaited<ReturnType<typeof loadSettings>>;
 
@@ -331,6 +335,10 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
 
         // La disponibilidad se vuelve a calcular aquí, dentro del turno: solo vale una hora
         // que el motor ofrece ahora mismo, no la que la página mostró hace un rato.
+        // La cuenta sigue activa: si la clienta la borra desde otro dispositivo a la vez, la
+        // cita no queda agendada a nombre de nadie (RF22).
+        if (!(await holdActiveAccount(tx, user.id))) return ACCOUNT_GONE;
+
         const { rules, times } = await offeredTimes(tx, now, date, durationMinutes);
         if (!times.includes(time)) return undefined;
 
@@ -364,6 +372,10 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
     } catch (error) {
       if (answeredWriteError(error, res)) return;
       throw error;
+    }
+    if (id === ACCOUNT_GONE) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
     }
     if (!id) return slotTaken(res);
 

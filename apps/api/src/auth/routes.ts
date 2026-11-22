@@ -6,7 +6,7 @@ import {
   wrongPasswordMessage,
   type PublicUser,
 } from "@caro/shared";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { Router, type Request, type Response } from "express";
 import type { Database } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -206,13 +206,22 @@ export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): R
 
     const passwordHash = await hashPassword(parsed.data.newPassword);
     const token = readSessionCookie(req) ?? "";
-    await db.transaction(async (tx) => {
-      await tx
+    // Solo una cuenta activa: si la clienta la borró a la vez desde otro dispositivo, la
+    // cuenta borrada no recibe una contraseña nueva.
+    const changed = await db.transaction(async (tx) => {
+      const [row] = await tx
         .update(users)
         .set({ passwordHash, updatedAt: new Date() })
-        .where(eq(users.id, user.id));
+        .where(and(eq(users.id, user.id), isNull(users.anonymizedAt)))
+        .returning({ id: users.id });
+      if (!row) return false;
       await deleteOtherSessions(tx, user.id, token);
+      return true;
     });
+    if (!changed) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
     res.status(204).end();
   });
 

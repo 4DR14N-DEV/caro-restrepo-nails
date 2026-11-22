@@ -1,5 +1,5 @@
 import { DELETED_CLIENT_NAME } from "@caro/shared";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, isNull } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { appointments, sessions, users } from "../db/schema.js";
 import { clearAttempts, limitKey, loginPhoneLimit } from "./rate-limit.js";
@@ -41,4 +41,27 @@ export async function deleteClientAccount(
     // Los intentos de ingreso se guardan con el celular: también se borran.
     await clearAttempts(tx, limitKey(loginPhoneLimit, user.phone));
   });
+}
+
+// Dentro de una transacción que guarda algo a nombre de una cuenta: confirma que sigue activa
+// y la retiene hasta el final (FOR SHARE). Si la clienta la está borrando a la vez, espera a
+// que el borrado termine y entonces ve la cuenta borrada; si esta transacción va primero, el
+// borrado espera y después cancela lo que se guardó. `clientOnly` exige además que no sea admin.
+export async function holdActiveAccount(
+  tx: Pick<Database, "select">,
+  id: string,
+  clientOnly = false,
+): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, id),
+        isNull(users.anonymizedAt),
+        clientOnly ? eq(users.role, "client") : undefined,
+      ),
+    )
+    .for("share");
+  return row !== undefined;
 }
