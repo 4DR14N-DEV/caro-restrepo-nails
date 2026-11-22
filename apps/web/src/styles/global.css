@@ -29,6 +29,11 @@
   --success-soft: #e7f3ea;
   --on-success: #ffffff;
   --warning: #7a5a12;
+  /* Degradé del letrero (el fucsia solo vive aquí) y su brillo. */
+  --logo-1: #b0185a;
+  --logo-2: #de4f92;
+  --logo-3: #f3afcb;
+  --logo-glow: none;
 }
 
 /* Oscuro: el que elige el celular, salvo que la persona haya elegido "claro" en el sitio. */
@@ -54,6 +59,10 @@
     --success-soft: #1c2e24;
     --on-success: #1e1419;
     --warning: #f3d28a;
+    --logo-1: #ff4f9a;
+    --logo-2: #ff86ba;
+    --logo-3: #ffd0e3;
+    --logo-glow: drop-shadow(0 0 10px rgb(255 79 154 / 0.4));
   }
 }
 
@@ -78,6 +87,10 @@
   --success-soft: #1c2e24;
   --on-success: #1e1419;
   --warning: #f3d28a;
+  --logo-1: #ff4f9a;
+  --logo-2: #ff86ba;
+  --logo-3: #ffd0e3;
+  --logo-glow: drop-shadow(0 0 10px rgb(255 79 154 / 0.4));
 }
 
 @theme inline {
