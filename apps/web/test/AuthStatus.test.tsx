@@ -64,6 +64,9 @@ describe("AuthStatus", () => {
     expect(screen.getByRole("link", { name: "Horario y reglas" }).getAttribute("href")).toBe(
       "/admin/horario",
     );
+    expect(screen.getByRole("link", { name: "Clientas" }).getAttribute("href")).toBe(
+      "/admin/clientas",
+    );
   });
 
   it("a una clienta no le muestra el enlace al panel", async () => {
@@ -74,6 +77,7 @@ describe("AuthStatus", () => {
     expect(screen.queryByRole("link", { name: "Administrar servicios" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ver agenda" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Horario y reglas" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Clientas" })).toBeNull();
   });
 
   it("con sesión muestra el enlace a Mis citas", async () => {

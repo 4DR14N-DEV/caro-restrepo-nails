@@ -58,6 +58,7 @@ pnpm --filter @caro/web dev   # http://127.0.0.1:4321
 | `/admin/agenda`    | Solo Caro  | Agenda por día, semana y mes; marcar completada, no asistió o cancelar; recordar y avisar por WhatsApp; bloquear días o franjas, descansos y abrir más temprano (la API responde 401 o 403) |
 | `/admin/servicios` | Solo Caro  | Crear, editar, activar y desactivar servicios (la API responde 401 o 403)                                                                                                                   |
 | `/admin/horario`   | Solo Caro  | Horario de lunes a sábado, margen entre citas y reglas de reserva, cancelación y reprogramación; avisa las citas que quedan fuera del nuevo horario (la API responde 401 o 403)             |
+| `/admin/clientas`  | Solo Caro  | Clientas con cuenta, con filtro por nombre o celular; generar una contraseña nueva y enviarla por WhatsApp (la API responde 401 o 403)                                                      |
 
 ## Comandos
 

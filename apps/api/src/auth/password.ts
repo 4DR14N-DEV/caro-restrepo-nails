@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 
 // Parámetros mínimos recomendados por OWASP para Argon2id (19 MiB, 2 iteraciones).
@@ -21,4 +21,12 @@ const dummyHash = hashPassword(randomBytes(16).toString("hex"));
 export async function verifyAgainstDummy(password: string): Promise<false> {
   await verify(await dummyHash, password);
   return false;
+}
+
+// Sin letras ni números que se confundan al dictarla o leerla en el celular (i, l, o, 0, 1).
+const READABLE = "abcdefghjkmnpqrstuvwxyz23456789";
+
+// Clave nueva que Caro le pasa a una clienta que olvidó la suya (RF17).
+export function generatePassword(length = 10): string {
+  return Array.from({ length }, () => READABLE[randomInt(READABLE.length)]).join("");
 }

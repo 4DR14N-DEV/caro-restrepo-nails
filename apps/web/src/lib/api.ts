@@ -4,6 +4,7 @@ import type {
   Agenda,
   AgendaChange,
   AppointmentChange,
+  ClientRow,
   ClientSummary,
   ExceptionRequest,
   ExceptionResult,
@@ -11,6 +12,7 @@ import type {
   BookingRequest,
   BookingResult,
   MyAppointments,
+  PasswordReset,
   PublicService,
   PublicUser,
   ScheduleSaved,
@@ -86,6 +88,9 @@ export const api = {
       "GET",
       `/api/admin/agenda?${new URLSearchParams({ from, to, ...(withCancelled ? { cancelled: "1" } : {}) })}`,
     ),
+  adminClients: () => call<{ clients: ClientRow[] }>("GET", "/api/admin/clients/list"),
+  resetClientPassword: (id: string) =>
+    call<PasswordReset>("POST", `/api/admin/clients/${encodeURIComponent(id)}/password`),
   searchClients: (q: string) =>
     call<{ clients: ClientSummary[] }>("GET", `/api/admin/clients?${new URLSearchParams({ q })}`),
   createAppointment: (body: AdminAppointmentRequest) =>

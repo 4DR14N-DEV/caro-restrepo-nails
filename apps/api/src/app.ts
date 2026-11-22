@@ -1,7 +1,8 @@
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { authRouter, type ClientIp } from "./auth/routes.js";
 import { adminAgendaRouter, adminAppointmentsRouter } from "./booking/admin-agenda-routes.js";
-import { adminBookingRouter, adminClientsRouter } from "./booking/admin-booking-routes.js";
+import { adminBookingRouter } from "./booking/admin-booking-routes.js";
+import { adminClientsRouter } from "./clients/admin-routes.js";
 import { adminExceptionsRouter } from "./booking/admin-exceptions-routes.js";
 import { adminScheduleRouter } from "./booking/admin-schedule-routes.js";
 import { appointmentsRouter } from "./booking/appointments-routes.js";
@@ -45,7 +46,7 @@ export function createApp({
   app.use("/api/admin/exceptions", adminExceptionsRouter(db, now));
   app.use("/api/admin/schedule", adminScheduleRouter(db, now));
   app.use("/api/admin/appointments", adminBookingRouter(db, now));
-  app.use("/api/admin/clients", adminClientsRouter(db));
+  app.use("/api/admin/clients", adminClientsRouter(db, now));
   app.use("/api/booking", bookingRouter(db, now));
   app.use("/api/appointments", appointmentsRouter(db, now));
 

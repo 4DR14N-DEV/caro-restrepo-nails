@@ -7,9 +7,8 @@ import {
   slotClashMessage,
   summarize,
   type AgendaChange,
-  type ClientSummary,
 } from "@caro/shared";
-import { and, asc, eq, gt, ilike, isNull, like, lt, ne, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, ne } from "drizzle-orm";
 import { Router, type Response } from "express";
 import { requireAdmin } from "../auth/require-admin.js";
 import type { Database } from "../db/client.js";
@@ -21,8 +20,6 @@ import { bogotaDate, bogotaInstant, MINUTE } from "./dates.js";
 import { limitLockWait, lockDay } from "./locks.js";
 import { serviceUnavailable } from "./responses.js";
 import { loadActiveServices, loadSettings } from "./schedule.js";
-
-const SEARCH_LIMIT = 10;
 
 function conflict(res: Response, error: string, field: string, message: string): void {
   res.status(409).json({ error, fields: { [field]: message } });
@@ -66,44 +63,6 @@ async function clashes(
     )
     .limit(1);
   return Boolean(other);
-}
-
-// Búsqueda de clientas para agendar a su nombre: por nombre o por celular.
-export function adminClientsRouter(db: Database): Router {
-  const router = Router();
-  router.use(requireAdmin(db));
-
-  router.get("/", async (req, res) => {
-    const q = String(req.query.q ?? "").trim();
-    if (q.length < 2) {
-      res.json({ clients: [] });
-      return;
-    }
-    // Los comodines de LIKE que escriba Caro se buscan como texto.
-    const text = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-    const digits = q.replace(/\D/g, "");
-    const rows = await db
-      .select({ id: users.id, name: users.name, phone: users.phone })
-      .from(users)
-      .where(
-        and(
-          eq(users.role, "client"),
-          isNull(users.anonymizedAt),
-          or(
-            ilike(users.name, text),
-            digits.length >= 3 ? like(users.phone, `%${digits}%`) : undefined,
-          ),
-        ),
-      )
-      .orderBy(asc(users.name), asc(users.id))
-      .limit(SEARCH_LIMIT);
-    const clients: ClientSummary[] = rows.flatMap((row) =>
-      row.phone ? [{ id: row.id, name: row.name, phone: row.phone }] : [],
-    );
-    res.set("Cache-Control", "no-store").json({ clients });
-  });
-
-  return router;
 }
 
 // Citas que Caro agenda a nombre de una clienta (RF11), sin las restricciones de las

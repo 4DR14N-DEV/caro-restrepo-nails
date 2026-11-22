@@ -62,6 +62,14 @@ export function AuthStatus() {
             Horario y reglas
           </a>
         )}
+        {user.role === "admin" && (
+          <a
+            href="/admin/clientas"
+            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          >
+            Clientas
+          </a>
+        )}
         <button
           type="button"
           onClick={logout}
