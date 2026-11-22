@@ -1,0 +1,19 @@
+---
+import { AdminSchedule } from "../../components/AdminSchedule";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Horario y reglas · Panel de Caro"
+  description="Panel de Caro Restrepo Nails para configurar el horario base y las reglas de reserva."
+>
+  <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
+    <a href="/" class="text-sm text-neutral-600 underline">← Volver al inicio</a>
+    <h1 class="text-2xl font-semibold tracking-tight">Horario y reglas</h1>
+    <p class="text-neutral-600">
+      Los cambios valen para las reservas nuevas. Las citas ya agendadas no se mueven, y los
+      bloqueos y descansos de cada día se mantienen.
+    </p>
+    <AdminSchedule client:load />
+  </main>
+</BaseLayout>

@@ -16,10 +16,10 @@ Rama: `feat/entrega-10-horario-base` · Estrategia de entrega: ask-on-risk (un P
 
 ## Tasks
 
-| ID  | Specs                | Ruta   | Estado    | Commit |
-| --- | -------------------- | ------ | --------- | ------ |
-| T1  | S1–S8 (shared + API) | inline | pendiente |        |
-| T2  | S1–S6 (web)          | inline | pendiente |        |
+| ID  | Specs                | Ruta   | Estado | Commit  |
+| --- | -------------------- | ------ | ------ | ------- |
+| T1  | S1–S8 (shared + API) | inline | hecha  | 8cd9690 |
+| T2  | S1–S6 (web)          | inline | hecha  | ver log |
 
 Ruta: todo inline (sin motivo de escritor delegado); T2 depende de T1. Riesgo previsto: ítem 2 (solo admin) en T1. Previsión: ~700 líneas propias.
 
@@ -28,3 +28,4 @@ Ruta: todo inline (sin motivo de escritor delegado); T2 depende de T1. Riesgo pr
 - L1 (2026-11-22, usuario): "dale, arranquemos la entrega 10" → propuesta: reparto 10: RF15; 11: RF17 + RF22; 12: RF18, y una tabla de 10 decisiones.
 - L2 (2026-11-22, usuario): "sí, me sirven todas, arranquemos." (aprueba el reparto y la tabla de 10 decisiones, citadas en S1–S10).
 - L3: T1. shared `schedule.ts`: `scheduleSettingsRequestSchema` estricto (`hours`: los seis días de lunes a sábado, cada uno con `opensAt`/`closesAt` en múltiplos de 15 o los dos `null` = cerrado; abre desde 8:00, cierra hasta 21:00, apertura antes del cierre; `rules`: margen 0–60 de a 5, días mínimos 0–14, meses máximos 1–6, cancelar 0–48 horas, reprogramar 0–14 días, enteros), `fitsHours` (el margen no se exige al cierre) y `outsideHoursMessage`. `quarterTime` de `agenda.ts` pasa a exportarse. API: `GET /api/admin/schedule` y `PUT /api/admin/schedule` solo admin, `no-store`. Guardar reemplaza las filas de `business_hours` (un día cerrado no tiene fila) y actualiza `settings` en una transacción, sin turno de días (S8); responde `{ hours, rules, outside }`: las citas agendadas desde ahora que entraban en el horario anterior y no en el nuevo, sin festivos. Las citas y las excepciones no se tocan. RED: shared (módulo inexistente) y API 7 de 7 → verdes. Mutaciones: sin `requireAdmin` falla "sin sesión 401; una clienta 403"; sin el filtro del horario anterior falla el aviso; restaurado. Chequeos: test 201/201 (shared 66), test:db 237/237, typecheck, lint y formato en verde.
+- L4: T2. Página `/admin/horario` con `AdminSchedule` (contenedor; 401 → "Ingresa con la cuenta de Caro para cambiar el horario." con "Ingresar" a `/ingreso?next=%2Fadmin%2Fhorario`; 403 → "Esta página es solo para Caro."; falla al cargar → "Reintentar"). Un grupo por día de lunes a sábado con "Abre" y "Desde"/"Hasta" (8:00 a. m. a 9:00 p. m. de a 15 minutos); abrir un día cerrado propone 9:00 a. m.–7:00 p. m.; "Domingos y festivos no se atiende.". Cinco reglas numéricas. Antes de enviar valida con el esquema compartido y muestra el mensaje junto al campo (la API colapsa el 400 en `hours`/`rules`). Al guardar: "Horario guardado." y, si hay, el aviso con la lista (día y hora, clienta, servicios) y "Ver agenda". Enlace "Horario y reglas" en el inicio para Caro; fila nueva en el README. RED: AdminSchedule (componente inexistente) y AuthStatus (1 de 6) → verdes. Chequeos: test 211/211 (web 112), test:db 237/237, typecheck, lint, formato y build web en verde.
