@@ -176,7 +176,7 @@ export function formatTime(time: string): string {
 }
 
 // ["A", "B", "C"] → "A, B y C"
-function joinNames(names: readonly string[]): string {
+export function joinNames(names: readonly string[]): string {
   return names.length <= 1
     ? (names[0] ?? "")
     : `${names.slice(0, -1).join(", ")} y ${names.at(-1)}`;

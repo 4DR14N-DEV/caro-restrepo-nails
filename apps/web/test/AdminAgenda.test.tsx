@@ -84,6 +84,30 @@ describe("AdminAgenda: acceso", () => {
   });
 });
 
+describe("AdminAgenda: abrir desde un aviso (RF18)", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("con ?dia= abre la agenda en ese día", async () => {
+    window.history.replaceState(null, "", "/admin/agenda?dia=2026-11-30");
+    const fetchMock = mockApi({ "GET /api/admin/agenda": () => json(200, { appointments: [] }) });
+    render(<AdminAgenda today={TODAY} />);
+
+    expect(await screen.findByRole("heading", { name: "lunes 30 de noviembre" })).toBeTruthy();
+    expect(agendaQueries(fetchMock)[0]).toEqual({ from: "2026-11-30", to: "2026-11-30" });
+  });
+
+  it("una fecha inválida en ?dia= se ignora y muestra hoy", async () => {
+    window.history.replaceState(null, "", "/admin/agenda?dia=2026-02-30");
+    const fetchMock = mockApi({ "GET /api/admin/agenda": () => json(200, { appointments: [] }) });
+    render(<AdminAgenda today={TODAY} />);
+
+    expect(await screen.findByRole("heading", { name: "lunes 23 de noviembre" })).toBeTruthy();
+    expect(agendaQueries(fetchMock)[0]).toEqual({ from: TODAY, to: TODAY });
+  });
+});
+
 describe("AdminAgenda: día", () => {
   it("muestra hoy por defecto con hora, clienta, servicios, duración, total y estado", async () => {
     const fetchMock = mockApi({

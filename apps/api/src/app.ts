@@ -9,6 +9,7 @@ import { appointmentsRouter } from "./booking/appointments-routes.js";
 import { bookingRouter } from "./booking/routes.js";
 import type { Database } from "./db/client.js";
 import { adminPushRouter } from "./push/admin-routes.js";
+import { adminNotifier } from "./push/notify.js";
 import type { PushService } from "./push/sender.js";
 import { adminServicesRouter } from "./services/admin-routes.js";
 import { servicesRouter } from "./services/routes.js";
@@ -35,6 +36,7 @@ export function createApp({
   push = null,
 }: AppDependencies): Express {
   const app = express();
+  const notifyAdmins = adminNotifier(db, push);
 
   app.disable("x-powered-by");
   app.use(express.json());
@@ -43,7 +45,7 @@ export function createApp({
     res.json({ status: "ok" });
   });
 
-  app.use("/api/auth", authRouter(db, clientIp, now));
+  app.use("/api/auth", authRouter(db, clientIp, now, notifyAdmins));
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
   app.use("/api/admin/agenda", adminAgendaRouter(db, now));
@@ -54,7 +56,7 @@ export function createApp({
   app.use("/api/admin/clients", adminClientsRouter(db, now));
   app.use("/api/admin/push", adminPushRouter(db, push));
   app.use("/api/booking", bookingRouter(db, now));
-  app.use("/api/appointments", appointmentsRouter(db, now));
+  app.use("/api/appointments", appointmentsRouter(db, now, notifyAdmins));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

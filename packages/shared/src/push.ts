@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatWhen, joinNames } from "./booking.js";
 
 // Avisos push para Caro (RF18), compartido por la API y la web.
 
@@ -33,4 +34,35 @@ export interface PushPayload {
   title: string;
   body: string;
   url: string;
+}
+
+// Lo que hizo una clienta con una cita, para avisarle a Caro (RF18). `date` y `time` son la
+// fecha y hora en Bogotá de la cita (la nueva, si se reprogramó).
+export type AppointmentNotice = {
+  clientName: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+} & (
+  { kind: "booked" | "cancelled" } | { kind: "rescheduled"; from: { date: string; time: string } }
+);
+
+const NOTICE_TITLES = {
+  booked: "Nueva cita",
+  cancelled: "Cita cancelada",
+  rescheduled: "Cita reprogramada",
+} as const;
+
+// "Nueva cita" · "{nombre}, {servicios}, {día} a las {hora}"; al tocarlo abre la agenda en
+// el día de la cita.
+export function appointmentNoticePayload(notice: AppointmentNotice): PushPayload {
+  const when =
+    notice.kind === "rescheduled"
+      ? `del ${formatWhen(notice.from.date, notice.from.time)} al ${formatWhen(notice.date, notice.time)}`
+      : formatWhen(notice.date, notice.time);
+  return {
+    title: NOTICE_TITLES[notice.kind],
+    body: `${notice.clientName}, ${joinNames(notice.services)}, ${when}`,
+    url: `/admin/agenda?dia=${notice.date}`,
+  };
 }
