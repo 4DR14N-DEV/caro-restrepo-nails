@@ -151,3 +151,15 @@
     }
   }
 }
+
+/* Animación de entrada del letrero (src/lib/logo-intro.ts): mientras la portada espera a GSAP,
+   las partes del letrero no se ven. Si GSAP no llega, la marca se quita a los 4 s. */
+.logo-intro .logo-hero .logo-glyph {
+  fill-opacity: 0;
+}
+
+.logo-intro .logo-hero .logo-line,
+.logo-intro .logo-hero .logo-word,
+.logo-intro .logo-hero .logo-bird {
+  opacity: 0;
+}

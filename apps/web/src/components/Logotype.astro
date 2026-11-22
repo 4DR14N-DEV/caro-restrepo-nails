@@ -60,13 +60,15 @@ const gradient = `${id}-gradient`;
           NAILS
         </text>
       </g>
-      <svg class="logo-bird" x="520" y="0" width="76" height="76" viewBox={HUMMINGBIRD_VIEWBOX} overflow="visible">
+      <g class="logo-bird">
+      <svg x="520" y="0" width="76" height="76" viewBox={HUMMINGBIRD_VIEWBOX} overflow="visible">
         <g fill="none" stroke="var(--champagne)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d={HUMMINGBIRD_PATHS.body} />
           <path class="logo-wing" d={HUMMINGBIRD_PATHS.wing} />
         </g>
         <circle cx={HUMMINGBIRD_EYE.cx} cy={HUMMINGBIRD_EYE.cy} r={HUMMINGBIRD_EYE.r} fill="var(--champagne)" />
       </svg>
+      </g>
     </svg>
   )
 }
