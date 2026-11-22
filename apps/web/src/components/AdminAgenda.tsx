@@ -1,6 +1,8 @@
 import {
   addDays,
+  adminBookedMessage,
   adminCancelMessage,
+  adminMovedMessage,
   bogotaDate,
   describeException,
   formatDay,
@@ -14,9 +16,10 @@ import {
   type AgendaException,
   type MarkedStatus,
 } from "@caro/shared";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, formErrorMessage } from "../lib/api";
 import { AgendaCard } from "./AgendaCard";
+import { AppointmentForm } from "./AppointmentForm";
 import { DaySchedule } from "./DaySchedule";
 
 type View = "day" | "week" | "month";
@@ -76,6 +79,10 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
   const [reload, setReload] = useState(0);
   const [notice, setNotice] = useState<string>();
   const [cancelled, setCancelled] = useState<AgendaAppointment>();
+  // La cita que se está creando ("new") o editando.
+  const [formFor, setFormFor] = useState<"new" | AgendaAppointment>();
+  // Lo último que Caro guardó desde el formulario, con el mensaje para avisarle a la clienta.
+  const [saved, setSaved] = useState<{ appointment: AgendaAppointment; message: string }>();
 
   const { from, to } = rangeOf(view, anchor);
 
@@ -107,6 +114,8 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
     if (next.from !== from || next.to !== to) setLoad({ state: "loading" });
     setNotice(undefined);
     setCancelled(undefined);
+    setSaved(undefined);
+    setFormFor(undefined);
     setView(nextView);
     setAnchor(nextAnchor);
   }
@@ -197,6 +206,21 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         Mostrar canceladas
       </label>
 
+      {saved && (
+        <div role="status" className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
+          <p className="font-medium">Cita guardada.</p>
+          {saved.appointment.client.phone && (
+            <a
+              href={whatsappLink(saved.appointment.client.phone, saved.message)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+            >
+              Avisar a {saved.appointment.client.name} por WhatsApp
+            </a>
+          )}
+        </div>
+      )}
       {cancelled && (
         <div role="status" className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
           <p className="font-medium">Cita cancelada.</p>
@@ -240,6 +264,36 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
           exceptions={load.exceptions}
           onMark={mark}
           onScheduleChanged={() => setReload((count) => count + 1)}
+          form={
+            formFor && (
+              <AppointmentForm
+                date={anchor}
+                today={today}
+                appointment={formFor === "new" ? undefined : formFor}
+                onCancel={() => setFormFor(undefined)}
+                onSaved={(appointment) => {
+                  const before = formFor === "new" ? undefined : formFor;
+                  // Mover la misma cita de la misma clienta avisa el cambio; crear,
+                  // reasignar o cambiar solo los servicios avisa la cita agendada.
+                  const moved =
+                    before &&
+                    before.client.id === appointment.client.id &&
+                    (before.date !== appointment.date || before.time !== appointment.time);
+                  const input = { clientName: appointment.client.name, ...appointment };
+                  setSaved({
+                    appointment,
+                    message: moved ? adminMovedMessage(input) : adminBookedMessage(input),
+                  });
+                  setCancelled(undefined);
+                  setNotice(undefined);
+                  setFormFor(undefined);
+                  setReload((count) => count + 1);
+                }}
+              />
+            )
+          }
+          onNew={anchor >= today ? () => setFormFor("new") : undefined}
+          onEdit={(appointment) => setFormFor(appointment)}
         />
       )}
       {load.state === "ready" && view === "week" && (
@@ -269,6 +323,9 @@ function DayView({
   exceptions,
   onMark,
   onScheduleChanged,
+  form,
+  onNew,
+  onEdit,
 }: {
   date: string;
   today: string;
@@ -276,10 +333,25 @@ function DayView({
   exceptions: AgendaException[];
   onMark: (appointment: AgendaAppointment, status: MarkedStatus) => Promise<void>;
   onScheduleChanged: () => void;
+  // El formulario de una cita nueva o en edición, si está abierto.
+  form: ReactNode;
+  // Sin función, el día ya pasó y no se ofrece crear citas.
+  onNew: (() => void) | undefined;
+  onEdit: (appointment: AgendaAppointment) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">{formatDay(date)}</h2>
+      {form ??
+        (onNew && (
+          <button
+            type="button"
+            onClick={onNew}
+            className="h-12 rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          >
+            Nueva cita
+          </button>
+        ))}
       {appointments.length === 0 ? (
         <p className="text-neutral-600">No hay citas este día.</p>
       ) : (
@@ -289,6 +361,7 @@ function DayView({
               key={appointment.id}
               appointment={appointment}
               onMark={(status) => onMark(appointment, status)}
+              onEdit={() => onEdit(appointment)}
             />
           ))}
         </ul>

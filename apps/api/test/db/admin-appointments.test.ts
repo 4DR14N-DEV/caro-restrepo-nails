@@ -127,10 +127,11 @@ describe("POST /api/admin/appointments", () => {
       date: TOMORROW,
       time: "10:00",
       services: ["Retiro", "Semipermanente manos"],
+      serviceIds: [retiro.id, manos.id],
       durationMinutes: 90,
       totalPriceCop: 55000,
       status: "scheduled",
-      client: { name: "Ana María", phone: "+573001234567" },
+      client: { id: ana.userId, name: "Ana María", phone: "+573001234567" },
       canMark: false,
       canCancel: true,
     });
@@ -371,7 +372,11 @@ describe("PATCH /api/admin/appointments/:id", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.appointment.client).toEqual({ name: "Luisa", phone: "+573009876543" });
+    expect(response.body.appointment.client).toEqual({
+      id: luisa.userId,
+      name: "Luisa",
+      phone: "+573009876543",
+    });
     expect(await stored(id)).toMatchObject({
       clientId: luisa.userId,
       startAt: new Date("2026-11-24T15:15:00Z"),

@@ -17,7 +17,7 @@ import { appointments, scheduleExceptions, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
 import { toAgendaException } from "./exceptions.js";
-import { serviceNamesByAppointment } from "./service-copies.js";
+import { serviceCopiesByAppointment } from "./service-copies.js";
 
 const agendaColumns = {
   id: appointments.id,
@@ -25,6 +25,7 @@ const agendaColumns = {
   endAt: appointments.endAt,
   status: appointments.status,
   totalPriceCop: appointments.totalPriceCop,
+  clientId: users.id,
   clientName: users.name,
   clientPhone: users.phone,
 };
@@ -35,20 +36,26 @@ type AgendaRow = {
   endAt: Date;
   status: AgendaAppointment["status"];
   totalPriceCop: number;
+  clientId: string;
   clientName: string;
   clientPhone: string | null;
 };
 
-function toAgenda(row: AgendaRow, services: string[], current: Date): AgendaAppointment {
+function toAgenda(
+  row: AgendaRow,
+  copies: { serviceId: string; name: string }[],
+  current: Date,
+): AgendaAppointment {
   return {
     id: row.id,
     date: bogotaDate(row.startAt),
     time: bogotaTime(row.startAt),
-    services,
+    services: copies.map((copy) => copy.name),
+    serviceIds: copies.map((copy) => copy.serviceId),
     durationMinutes: (row.endAt.getTime() - row.startAt.getTime()) / MINUTE,
     totalPriceCop: row.totalPriceCop,
     status: row.status,
-    client: { name: row.clientName, phone: row.clientPhone },
+    client: { id: row.clientId, name: row.clientName, phone: row.clientPhone },
     canMark: row.status !== "cancelled" && row.startAt <= current,
     canCancel: row.status === "scheduled",
   };
@@ -66,11 +73,11 @@ export async function loadAgenda(
     .innerJoin(users, eq(users.id, appointments.clientId))
     .where(where)
     .orderBy(asc(appointments.startAt), asc(appointments.id));
-  const names = await serviceNamesByAppointment(
+  const copies = await serviceCopiesByAppointment(
     db,
     rows.map((row) => row.id),
   );
-  return rows.map((row) => toAgenda(row, names.get(row.id) ?? [], current));
+  return rows.map((row) => toAgenda(row, copies.get(row.id) ?? [], current));
 }
 
 function statusNotAllowed(res: Response, form: string): void {

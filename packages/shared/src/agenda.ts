@@ -11,11 +11,13 @@ export interface AgendaAppointment {
   date: string;
   time: string;
   services: string[];
+  // Los ids de esos servicios, en el mismo orden (para editar la cita).
+  serviceIds: string[];
   durationMinutes: number;
   totalPriceCop: number;
   status: AppointmentStatus;
   // Sin celular si la clienta borró su cuenta (queda anonimizada).
-  client: { name: string; phone: string | null };
+  client: { id: string; name: string; phone: string | null };
   // Completada o "no asistió": solo cuando la cita ya empezó y no está cancelada.
   canMark: boolean;
   // Cancelar: solo si está agendada.
