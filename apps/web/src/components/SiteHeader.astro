@@ -1,0 +1,24 @@
+---
+import { ThemeToggle } from "./ThemeToggle";
+
+interface Props {
+  // En la portada el letrero grande ya está en la página: el encabezado solo trae el botón de tema.
+  brand?: boolean;
+}
+
+const { brand = true } = Astro.props;
+---
+
+<header class="mx-auto flex w-full max-w-2xl items-center justify-between px-4 pt-3">
+  {
+    brand ? (
+      <a href="/" aria-label="Caro Restrepo Nails, ir al inicio" class="flex min-h-11 items-baseline gap-2 no-underline">
+        <span class="font-display text-2xl text-accent">Caro Restrepo</span>
+        <span class="text-xs tracking-[0.35em] text-muted">NAILS</span>
+      </a>
+    ) : (
+      <span />
+    )
+  }
+  <ThemeToggle client:load />
+</header>

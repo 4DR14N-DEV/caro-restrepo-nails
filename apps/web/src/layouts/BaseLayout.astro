@@ -1,12 +1,15 @@
 ---
+import SiteHeader from "../components/SiteHeader.astro";
 import "../styles/global.css";
 
 interface Props {
   title: string;
   description: string;
+  // false en la portada: el letrero grande va en la página y el encabezado solo trae el tema.
+  brand?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, brand = true } = Astro.props;
 ---
 
 <!doctype html>
@@ -16,12 +19,21 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <title>{title}</title>
+    <!-- Aplica el tema elegido en este dispositivo antes de pintar, para que no parpadee. -->
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem("theme");
+        if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
     <!-- Instalable en la pantalla de inicio: en iPhone es lo que permite los avisos push. -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content="#171717" />
+    <meta name="theme-color" content="#faf6f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e1419" media="(prefers-color-scheme: dark)" />
   </head>
-  <body class="min-h-dvh bg-white text-neutral-900 antialiased">
+  <body class="min-h-dvh bg-canvas font-sans text-ink antialiased">
+    <SiteHeader brand={brand} />
     <slot />
   </body>
 </html>
