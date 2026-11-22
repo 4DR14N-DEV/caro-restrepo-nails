@@ -115,7 +115,7 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
                   type="button"
                   disabled={removing === exception.id}
                   onClick={() => void remove(exception.id)}
-                  className="h-9 rounded-lg border border-line px-3 text-sm"
+                  className="h-11 rounded-xl border border-line px-4 text-sm text-ink"
                 >
                   Quitar
                 </button>
