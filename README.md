@@ -36,12 +36,13 @@ las clientas ven el catálogo, reservan, cancelan y reprograman desde el celular
 su agenda, su horario, sus servicios y sus clientas desde un panel propio. Cada reserva le llega
 a Caro como aviso en el celular.
 
-| Documento                             | Para qué sirve                                          |
-| ------------------------------------- | ------------------------------------------------------- |
-| [Requisitos](docs/requirements.md)    | Roles, requisitos funcionales y reglas de negocio       |
-| [Modelo de datos](docs/data-model.md) | Tablas y garantías en la base de datos                  |
-| [Decisiones](docs/decisions.md)       | Qué se eligió en la arquitectura y el diseño, y por qué |
-| [Entregas](odd/tasks)                 | Bitácora de cada entrega: specs, tareas y pruebas       |
+| Documento                             | Para qué sirve                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| [Requisitos](docs/requirements.md)    | Roles, requisitos funcionales y reglas de negocio                                   |
+| [Modelo de datos](docs/data-model.md) | Tablas y garantías en la base de datos                                              |
+| [Decisiones](docs/decisions.md)       | Qué se eligió en la arquitectura y el diseño, y por qué                             |
+| [Entregas](odd/tasks)                 | Bitácora de cada entrega: specs, tareas y pruebas                                   |
+| [Guía para Caro](docs/guia-caro.pdf)  | Paso a paso del panel, sin términos técnicos (PDF; fuente en `docs/guia-caro.html`) |
 
 ## Qué hace
 
