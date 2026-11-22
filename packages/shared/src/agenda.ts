@@ -89,7 +89,7 @@ export const cancelledIsFinalMessage = "Esta cita está cancelada y no se puede 
 export const onlyScheduledCancelMessage = "Solo se puede cancelar una cita agendada.";
 
 const quarterMessage = "Elige una hora en múltiplos de 15 minutos.";
-const quarterTime = (missing: string) =>
+export const quarterTime = (missing: string) =>
   z.string(missing).regex(/^([01]\d|2[0-3]):(00|15|30|45)$/, quarterMessage);
 const startMessage = "Elige la hora de inicio.";
 const endMessage = "Elige la hora de fin.";
