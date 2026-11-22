@@ -95,6 +95,26 @@ describe("PushToggle", () => {
     expect(calls(fetchMock, "PUT /api/admin/push/subscription")).toHaveLength(1);
   });
 
+  it("si al cargar no puede volver a guardarla, no dice que están activos", async () => {
+    mockApi({ "PUT /api/admin/push/subscription": json(500, { error: "internal_error" }) });
+    render(<PushToggle browser={fakeBrowser({ permission: "granted", subscribed: true })} />);
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "No pudimos confirmar los avisos en este dispositivo. Actívalos otra vez.",
+    );
+    expect(screen.queryByText("Los avisos están activos en este dispositivo.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Activar avisos en este dispositivo" })).toBeTruthy();
+  });
+
+  it("revisa la suscripción con la clave actual del servidor", async () => {
+    mockApi();
+    const browser = fakeBrowser({ permission: "granted", subscribed: true });
+    render(<PushToggle browser={browser} />);
+
+    await screen.findByText("Los avisos están activos en este dispositivo.");
+    expect(browser.subscription).toHaveBeenCalledWith("clave-publica");
+  });
+
   it("desactivar borra la suscripción del servidor y del navegador", async () => {
     const fetchMock = mockApi();
     const browser = fakeBrowser({ permission: "granted", subscribed: true });

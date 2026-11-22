@@ -249,22 +249,24 @@ export function authRouter(
     if (check === "wrong") return wrongPassword(res);
 
     const cancelled = await deleteClientAccount(db, user, now());
-    // Un aviso por cada cita próxima cancelada, con el nombre que tenía la clienta.
-    const names = await serviceNamesByAppointment(
-      db,
-      cancelled.map((appointment) => appointment.id),
-    );
-    await notifyAdmins(
-      cancelled
+    // Un aviso por cada cita próxima cancelada, con el nombre que tenía la clienta. Los
+    // servicios se leen dentro del aviso: si esa lectura falla, el borrado igual responde 204.
+    await notifyAdmins(async () => {
+      if (cancelled.length === 0) return [];
+      const names = await serviceNamesByAppointment(
+        db,
+        cancelled.map((appointment) => appointment.id),
+      );
+      return cancelled
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
         .map((appointment) => ({
-          kind: "cancelled",
+          kind: "cancelled" as const,
           clientName: user.name,
           services: names.get(appointment.id) ?? [],
           date: bogotaDate(appointment.startAt),
           time: bogotaTime(appointment.startAt),
-        })),
-    );
+        }));
+    });
     clearSessionCookie(res);
     res.status(204).end();
   });

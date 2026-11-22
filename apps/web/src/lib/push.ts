@@ -10,8 +10,8 @@ export type PushSupport = "ready" | "ios-install" | "unsupported";
 export interface PushBrowser {
   support(): PushSupport;
   permission(): NotificationPermission;
-  // La suscripción de este dispositivo, si ya tiene una.
-  subscription(): Promise<PushSubscriptionInput | null>;
+  // La suscripción de este dispositivo, si ya tiene una con la clave actual del servidor.
+  subscription(publicKey: string): Promise<PushSubscriptionInput | null>;
   // Pide el permiso (si hace falta) y suscribe el dispositivo con la clave del servidor.
   subscribe(publicKey: string): Promise<PushSubscriptionInput>;
   unsubscribe(): Promise<void>;
@@ -41,6 +41,10 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((byte, i) => byte === b[i]);
+}
+
 function toInput(subscription: PushSubscription): PushSubscriptionInput {
   return subscription.toJSON() as PushSubscriptionInput;
 }
@@ -58,9 +62,17 @@ export const browserPush: PushBrowser = {
   permission() {
     return Notification.permission;
   },
-  async subscription() {
+  async subscription(publicKey) {
     const current = await (await registration()).pushManager.getSubscription();
-    return current ? toInput(current) : null;
+    if (!current) return null;
+    // Si se cambiaron las claves del servidor, la suscripción vieja ya no sirve: se quita y
+    // Caro vuelve a activar los avisos.
+    const key = current.options.applicationServerKey;
+    if (key && !sameBytes(new Uint8Array(key), base64UrlToBytes(publicKey))) {
+      await current.unsubscribe();
+      return null;
+    }
+    return toInput(current);
   },
   async subscribe(publicKey) {
     const { pushManager } = await registration();

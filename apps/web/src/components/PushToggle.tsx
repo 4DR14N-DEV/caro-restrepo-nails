@@ -43,11 +43,20 @@ export function PushToggle({ browser = browserPush }: { browser?: PushBrowser })
       }
       if (browser.permission() === "denied") return show({ kind: "message", text: BLOCKED });
 
-      const current = await browser.subscription().catch(() => null);
+      const current = await browser.subscription(publicKey).catch(() => null);
       if (!current) return show({ kind: "off", publicKey });
-      // Se guarda otra vez por si el servidor la había borrado (vencida o de otra cuenta).
-      await api.savePushSubscription(current);
-      show({ kind: "on", publicKey, endpoint: current.endpoint });
+      // Se guarda otra vez por si el servidor la había borrado (vencida o de otra cuenta). Si
+      // no se pudo, el servidor no tiene a dónde enviar: no se muestra como activa.
+      const saved = await api.savePushSubscription(current);
+      show(
+        saved.ok
+          ? { kind: "on", publicKey, endpoint: current.endpoint }
+          : {
+              kind: "off",
+              publicKey,
+              error: "No pudimos confirmar los avisos en este dispositivo. Actívalos otra vez.",
+            },
+      );
     }
 
     void load();

@@ -6,6 +6,7 @@ import { createApp } from "../../src/app.js";
 import { hashPassword } from "../../src/auth/password.js";
 import { appointments, pushSubscriptions, users } from "../../src/db/schema.js";
 import { seed } from "../../src/db/seed-data.js";
+import { adminNotifier } from "../../src/push/notify.js";
 import type { PushResult, PushService, PushTarget } from "../../src/push/sender.js";
 import { appointmentHelpers } from "./appointment-helpers.js";
 import { createTestDatabase } from "./helpers.js";
@@ -190,7 +191,7 @@ describe("avisos push a Caro (RF18)", () => {
     expect(sent).toEqual([]);
   });
 
-  it("las suscripciones de otras cuentas que ya no son admin no reciben nada", async () => {
+  it("las suscripciones de cuentas que no son admin no reciben nada", async () => {
     const { push, sent } = fakePush();
     const app = createApp({ db: database.db, now, push });
     await caroWithDevices();
@@ -244,5 +245,51 @@ describe("avisos push a Caro (RF18)", () => {
     expect(await endpoints()).toEqual([CELULAR, TABLET]);
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe("adminNotifier", () => {
+  const notice = {
+    kind: "booked" as const,
+    clientName: "Ana María",
+    services: ["Retiro"],
+    date: "2026-11-23",
+    time: "10:00",
+  };
+
+  it("tiene un tope total: si el servicio de push no contesta, termina igual", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { push } = fakePush(() => new Promise<PushResult>(() => {}));
+    await caroWithDevices();
+    const notify = adminNotifier(database.db, push, { deadlineMs: 50 });
+
+    const started = Date.now();
+    await notify([notice]);
+
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("tiempo"));
+    error.mockRestore();
+  });
+
+  it("si armar los avisos falla, no lanza: solo lo registra", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { push, sent } = fakePush();
+    await caroWithDevices();
+    const notify = adminNotifier(database.db, push);
+
+    await expect(
+      notify(async () => {
+        throw new Error("la base no respondió");
+      }),
+    ).resolves.toBeUndefined();
+    expect(sent).toEqual([]);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("sin servicio de push no arma los avisos", async () => {
+    const build = vi.fn(async () => [notice]);
+    await adminNotifier(database.db, null)(build);
+    expect(build).not.toHaveBeenCalled();
   });
 });
