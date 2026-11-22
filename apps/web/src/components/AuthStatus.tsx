@@ -40,14 +40,14 @@ export function AuthStatus() {
         </p>
         <a
           href="/mis-citas"
-          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Mis citas
         </a>
         {user.role === "admin" && (
           <a
             href="/admin/servicios"
-            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+            className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
           >
             Administrar servicios
           </a>
@@ -55,7 +55,7 @@ export function AuthStatus() {
         {user.role === "admin" && (
           <a
             href="/admin/agenda"
-            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+            className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
           >
             Ver agenda
           </a>
@@ -63,7 +63,7 @@ export function AuthStatus() {
         {user.role === "admin" && (
           <a
             href="/admin/horario"
-            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+            className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
           >
             Horario y reglas
           </a>
@@ -71,7 +71,7 @@ export function AuthStatus() {
         {user.role === "admin" && (
           <a
             href="/admin/clientas"
-            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+            className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
           >
             Clientas
           </a>
@@ -80,12 +80,12 @@ export function AuthStatus() {
         <button
           type="button"
           onClick={logout}
-          className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Salir
         </button>
         {logoutError && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-danger">
             {logoutError}
           </p>
         )}
@@ -98,7 +98,7 @@ export function AuthStatus() {
       {accountDeleted() && (
         <p
           role="status"
-          className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-900"
+          className="rounded-xl bg-success-soft px-4 py-3 text-center text-sm text-success"
         >
           Tu cuenta fue borrada.
         </p>
@@ -106,13 +106,13 @@ export function AuthStatus() {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <a
           href="/registro"
-          className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Crear cuenta
         </a>
         <a
           href="/ingreso"
-          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Ingresar
         </a>

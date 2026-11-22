@@ -98,11 +98,11 @@ export function RescheduleFlow({ appointment, onDone, onProblem, onBack }: Props
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-neutral-200 pt-3">
+    <div className="flex flex-col gap-3 border-t border-line-soft pt-3">
       <p className="font-medium">Elige el día nuevo</p>
-      {days.state === "loading" && <p className="text-neutral-600">Cargando días…</p>}
+      {days.state === "loading" && <p className="text-muted">Cargando días…</p>}
       {days.state === "error" && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {days.message}
         </p>
       )}
@@ -123,19 +123,19 @@ export function RescheduleFlow({ appointment, onDone, onProblem, onBack }: Props
         <>
           <p className="font-medium">Elige la hora nueva</p>
           {notice && (
-            <p role="alert" className="text-red-700">
+            <p role="alert" className="text-danger">
               {notice}
             </p>
           )}
-          {times.state === "loading" && <p className="text-neutral-600">Buscando horas…</p>}
+          {times.state === "loading" && <p className="text-muted">Buscando horas…</p>}
           {times.state === "error" && (
-            <p role="alert" className="text-red-700">
+            <p role="alert" className="text-danger">
               {times.message}
             </p>
           )}
           {times.state === "ready" &&
             (times.items.length === 0 ? (
-              <p className="text-neutral-600">No quedan horas libres este día. Prueba con otro.</p>
+              <p className="text-muted">No quedan horas libres este día. Prueba con otro.</p>
             ) : (
               <ChoiceGrid
                 label="Horas"
@@ -155,7 +155,7 @@ export function RescheduleFlow({ appointment, onDone, onProblem, onBack }: Props
           type="button"
           onClick={() => void confirm()}
           disabled={submitting}
-          className="h-12 rounded-xl bg-neutral-900 px-6 text-base font-medium text-white disabled:opacity-60"
+          className="h-12 rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary disabled:opacity-60"
         >
           {submitting ? "Guardando…" : "Confirmar cambio"}
         </button>
@@ -163,7 +163,7 @@ export function RescheduleFlow({ appointment, onDone, onProblem, onBack }: Props
       <button
         type="button"
         onClick={onBack}
-        className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+        className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
       >
         Volver
       </button>

@@ -12,7 +12,7 @@ interface Props {
   onProblem: (message: string) => void;
 }
 
-const button = "h-12 flex-1 rounded-xl border border-neutral-300 px-4 text-base font-medium";
+const button = "h-12 flex-1 rounded-xl border border-line px-4 text-base font-medium text-ink";
 
 // Cancelar (RF08) y reprogramar (RF09) una cita próxima, solo cuando las reglas lo permiten.
 export function AppointmentActions({ appointment, onDone, onProblem }: Props) {
@@ -54,14 +54,14 @@ export function AppointmentActions({ appointment, onDone, onProblem }: Props) {
   // Confirmación dentro de la página: el cartel del navegador se ve mal en el celular.
   if (mode === "confirm") {
     return (
-      <div className="flex flex-col gap-3 border-t border-neutral-200 pt-3">
+      <div className="flex flex-col gap-3 border-t border-line-soft pt-3">
         <p className="font-medium">¿Seguro que quieres cancelar esta cita?</p>
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => void cancel()}
             disabled={submitting}
-            className="h-12 flex-1 rounded-xl bg-neutral-900 px-4 text-base font-medium text-white disabled:opacity-60"
+            className="h-12 flex-1 rounded-xl bg-primary hover:bg-primary-hover px-4 text-base font-medium text-on-primary disabled:opacity-60"
           >
             {submitting ? "Cancelando…" : "Sí, cancelar"}
           </button>
@@ -75,7 +75,7 @@ export function AppointmentActions({ appointment, onDone, onProblem }: Props) {
 
   const { canCancel, canReschedule } = appointment;
   return (
-    <div className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
+    <div className="flex flex-col gap-2 border-t border-line-soft pt-3">
       {(canReschedule || canCancel) && (
         <div className="flex gap-3">
           {canReschedule && (
@@ -91,7 +91,7 @@ export function AppointmentActions({ appointment, onDone, onProblem }: Props) {
         </div>
       )}
       {!(canReschedule && canCancel) && (
-        <p className="text-sm text-neutral-600">Para cambios, escríbele a Caro.</p>
+        <p className="text-sm text-muted">Para cambios, escríbele a Caro.</p>
       )}
     </div>
   );

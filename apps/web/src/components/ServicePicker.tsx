@@ -16,18 +16,18 @@ export function ServicePicker({ services, selected, onToggle }: Props) {
           <li key={service.id}>
             <label
               className={`flex min-h-16 cursor-pointer items-center gap-4 rounded-xl border px-4 py-3 ${
-                checked ? "border-neutral-900 bg-neutral-50" : "border-neutral-300"
+                checked ? "border-accent bg-surface-alt" : "border-line"
               }`}
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => onToggle(service.id)}
-                className="size-5 shrink-0 accent-neutral-900"
+                className="size-5 shrink-0 accent-accent"
               />
               <span className="flex flex-1 flex-col">
                 <span className="font-medium">{service.name}</span>
-                <span className="text-sm text-neutral-600">
+                <span className="text-sm text-muted">
                   {formatPrice(service.priceCop)} · {formatDuration(service.durationMinutes)}
                 </span>
               </span>

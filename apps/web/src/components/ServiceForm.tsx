@@ -66,10 +66,8 @@ export function ServiceForm({ service, save, onSaved, onCancel }: Props) {
   const { durationMinutes } = SERVICE_LIMITS;
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
-      <h2 className="text-lg font-semibold">
-        {service ? `Editar ${service.name}` : "Nuevo servicio"}
-      </h2>
+    <div className="flex flex-col gap-3 rounded-xl border border-line p-4">
+      <h2 className="text-2xl">{service ? `Editar ${service.name}` : "Nuevo servicio"}</h2>
       <FormShell
         onSubmit={handleSubmit}
         submitLabel="Guardar"
@@ -107,7 +105,7 @@ export function ServiceForm({ service, save, onSaved, onCancel }: Props) {
       <button
         type="button"
         onClick={onCancel}
-        className="h-12 rounded-xl border border-neutral-300 text-base font-medium"
+        className="h-12 rounded-xl border border-line text-base font-medium text-ink"
       >
         Cancelar
       </button>

@@ -66,19 +66,19 @@ export function MyAppointments() {
   );
 
   if (load.state === "loading") {
-    return <p className="text-neutral-600">Cargando tus citas…</p>;
+    return <p className="text-muted">Cargando tus citas…</p>;
   }
 
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button
           type="button"
           onClick={() => void fetchAppointments()}
-          className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Reintentar
         </button>
@@ -92,21 +92,21 @@ export function MyAppointments() {
     <div className="flex flex-col gap-8">
       {done && <ChangeDone change={done} clientName={load.clientName} />}
       {notice && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {notice}
         </p>
       )}
 
       <section aria-labelledby="proximas" className="flex flex-col gap-3">
-        <h2 id="proximas" className="text-lg font-semibold">
+        <h2 id="proximas" className="text-2xl">
           Próximas
         </h2>
         {upcoming.length === 0 ? (
           <div className="flex flex-col gap-3">
-            <p className="text-neutral-600">No tienes citas próximas.</p>
+            <p className="text-muted">No tienes citas próximas.</p>
             <a
               href="/reservar"
-              className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+              className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
             >
               Reservar cita
             </a>
@@ -127,11 +127,11 @@ export function MyAppointments() {
       </section>
 
       <section aria-labelledby="historial" className="flex flex-col gap-3">
-        <h2 id="historial" className="text-lg font-semibold">
+        <h2 id="historial" className="text-2xl">
           Historial
         </h2>
         {history.length === 0 ? (
-          <p className="text-neutral-600">Todavía no tienes citas pasadas.</p>
+          <p className="text-muted">Todavía no tienes citas pasadas.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {history.map((appointment) => (

@@ -30,7 +30,7 @@ export function ChangeDone({ change, clientName }: Props) {
         });
 
   return (
-    <div role="status" className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
+    <div role="status" className="flex flex-col gap-3 rounded-xl border border-line p-4">
       <p className="font-medium">
         {change.kind === "cancelled"
           ? "Tu cita quedó cancelada."
@@ -41,7 +41,7 @@ export function ChangeDone({ change, clientName }: Props) {
           href={whatsappLink(caroWhatsapp, message)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Avisar a Caro por WhatsApp
         </a>

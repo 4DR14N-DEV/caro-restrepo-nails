@@ -16,16 +16,16 @@ const introScript = `(${shouldPlayIntro.toString()})(window) && (document.docume
   <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-12 text-center">
     <script is:inline set:html={introScript} />
     <h1 class="-mx-2"><Logotype class="w-full" /></h1>
-    <p class="text-neutral-600">Reserva tu cita en línea en pocos pasos.</p>
+    <p class="text-muted">Reserva tu cita en línea en pocos pasos.</p>
     <a
       href="/reservar"
-      class="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+      class="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
     >
       Reservar cita
     </a>
     <a
       href="/servicios"
-      class="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+      class="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
     >
       Ver servicios y precios
     </a>

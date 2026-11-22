@@ -76,7 +76,7 @@ function ChangePasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel
         error={errors.repeat}
       />
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {problem}
         </p>
       )}
@@ -84,7 +84,7 @@ function ChangePasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel
         <button
           type="submit"
           disabled={busy}
-          className="h-12 flex-1 rounded-xl bg-neutral-900 px-4 text-base font-medium text-white disabled:opacity-60"
+          className="h-12 flex-1 rounded-xl bg-primary hover:bg-primary-hover px-4 text-base font-medium text-on-primary disabled:opacity-60"
         >
           {busy ? "Guardando…" : "Guardar contraseña"}
         </button>
@@ -92,7 +92,7 @@ function ChangePasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="h-12 rounded-xl border border-neutral-300 px-4 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-4 text-base font-medium text-ink"
         >
           Cancelar
         </button>
@@ -129,9 +129,9 @@ function DeleteAccountForm({ onCancel }: { onCancel: () => void }) {
     <form
       onSubmit={(event) => void remove(event)}
       noValidate
-      className="flex flex-col gap-4 rounded-xl border border-red-200 bg-red-50 p-4"
+      className="flex flex-col gap-4 rounded-xl border border-danger/30 bg-danger-soft p-4"
     >
-      <p className="text-sm text-red-900">
+      <p className="text-sm text-danger">
         Se borran tu nombre y tu celular, y se cancelan tus citas próximas. Tus citas pasadas quedan
         sin tus datos. Esto no se puede deshacer.
       </p>
@@ -144,7 +144,7 @@ function DeleteAccountForm({ onCancel }: { onCancel: () => void }) {
         error={error}
       />
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {problem}
         </p>
       )}
@@ -152,7 +152,7 @@ function DeleteAccountForm({ onCancel }: { onCancel: () => void }) {
         <button
           type="submit"
           disabled={busy}
-          className="h-12 rounded-xl bg-red-700 px-4 text-base font-medium text-white disabled:opacity-60"
+          className="h-12 rounded-xl bg-danger px-4 text-base font-medium text-on-danger disabled:opacity-60"
         >
           {busy ? "Borrando…" : "Borrar mi cuenta definitivamente"}
         </button>
@@ -160,7 +160,7 @@ function DeleteAccountForm({ onCancel }: { onCancel: () => void }) {
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="h-12 rounded-xl border border-neutral-300 bg-white px-4 text-base font-medium"
+          className="h-12 rounded-xl border border-line bg-surface px-4 text-base font-medium text-ink"
         >
           Cancelar
         </button>
@@ -178,11 +178,11 @@ export function MyAccount({ canDelete }: { canDelete: boolean }) {
 
   return (
     <section aria-labelledby="mi-cuenta" className="flex flex-col gap-3">
-      <h2 id="mi-cuenta" className="text-lg font-semibold">
+      <h2 id="mi-cuenta" className="text-2xl">
         Mi cuenta
       </h2>
       {changed && (
-        <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-900">
+        <p role="status" className="rounded-xl bg-success-soft px-4 py-3 text-sm text-success">
           Tu contraseña cambió. Cerramos tus otras sesiones abiertas.
         </p>
       )}
@@ -201,7 +201,7 @@ export function MyAccount({ canDelete }: { canDelete: boolean }) {
             setChanging(true);
             setChanged(false);
           }}
-          className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Cambiar contraseña
         </button>
@@ -213,7 +213,7 @@ export function MyAccount({ canDelete }: { canDelete: boolean }) {
           <button
             type="button"
             onClick={() => setDeleting(true)}
-            className="h-12 rounded-xl border border-red-300 px-6 text-base font-medium text-red-700"
+            className="h-12 rounded-xl border border-danger px-6 text-base font-medium text-danger"
           >
             Borrar mi cuenta
           </button>

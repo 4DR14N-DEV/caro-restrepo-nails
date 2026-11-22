@@ -24,15 +24,15 @@ interface Props {
 // Una cita en "Mis citas": cuándo, qué servicios, cuánto dura, cuánto cuesta y su estado.
 export function AppointmentCard({ appointment, children }: Props) {
   return (
-    <li className="flex flex-col gap-1 rounded-xl border border-neutral-300 p-4">
+    <li className="flex flex-col gap-1 rounded-xl border border-line p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium">{formatWhen(appointment.date, appointment.time)}</p>
-        <span className="shrink-0 rounded-full border border-neutral-300 px-2 py-0.5 text-sm">
+        <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-sm">
           {STATE_LABELS[appointment.state]}
         </span>
       </div>
-      <p className="text-neutral-700">{appointment.services.join(", ")}</p>
-      <p className="text-sm text-neutral-600">
+      <p className="text-muted">{appointment.services.join(", ")}</p>
+      <p className="text-sm text-muted">
         {formatDuration(appointment.durationMinutes)} · {formatPrice(appointment.totalPriceCop)}
       </p>
       {children}

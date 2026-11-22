@@ -13,7 +13,7 @@ export function FormShell({ onSubmit, submitLabel, submitting, error, children }
   return (
     <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
       {error && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
           {error}
         </p>
       )}
@@ -21,7 +21,7 @@ export function FormShell({ onSubmit, submitLabel, submitting, error, children }
       <button
         type="submit"
         disabled={submitting}
-        className="h-12 rounded-xl bg-neutral-900 text-base font-medium text-white disabled:opacity-60"
+        className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary disabled:opacity-60"
       >
         {submitting ? "Un momento…" : submitLabel}
       </button>
