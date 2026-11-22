@@ -1,8 +1,10 @@
 import type {
+  AdminAppointmentRequest,
   AdminService,
   Agenda,
   AgendaChange,
   AppointmentChange,
+  ClientSummary,
   ExceptionRequest,
   ExceptionResult,
   MarkedStatus,
@@ -81,6 +83,12 @@ export const api = {
       "GET",
       `/api/admin/agenda?${new URLSearchParams({ from, to, ...(withCancelled ? { cancelled: "1" } : {}) })}`,
     ),
+  searchClients: (q: string) =>
+    call<{ clients: ClientSummary[] }>("GET", `/api/admin/clients?${new URLSearchParams({ q })}`),
+  createAppointment: (body: AdminAppointmentRequest) =>
+    call<AgendaChange>("POST", "/api/admin/appointments", body),
+  updateAppointment: (id: string, body: AdminAppointmentRequest) =>
+    call<AgendaChange>("PATCH", `/api/admin/appointments/${encodeURIComponent(id)}`, body),
   addException: (body: ExceptionRequest) =>
     call<ExceptionResult>("POST", "/api/admin/exceptions", body),
   removeException: (id: string) =>

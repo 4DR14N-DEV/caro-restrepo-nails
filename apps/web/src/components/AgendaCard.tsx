@@ -21,13 +21,15 @@ interface Props {
   appointment: AgendaAppointment;
   // Devuelve cuando la API respondió (bien o mal); mientras tanto los botones esperan.
   onMark: (status: MarkedStatus) => Promise<void>;
+  // Editar la cita (día, hora, servicios, clienta); solo las agendadas.
+  onEdit?: () => void;
 }
 
 const button = "h-11 flex-1 rounded-xl border border-neutral-300 px-3 text-sm font-medium";
 
 // Una cita de la agenda de Caro, con lo que puede hacer con ella: marcarla (si ya empezó),
 // cancelarla (si está agendada) y recordársela a la clienta por WhatsApp.
-export function AgendaCard({ appointment, onMark }: Props) {
+export function AgendaCard({ appointment, onMark, onEdit }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const { client, status } = appointment;
@@ -108,6 +110,11 @@ export function AgendaCard({ appointment, onMark }: Props) {
             {appointment.canCancel && (
               <button type="button" onClick={() => setConfirming(true)} className={button}>
                 Cancelar
+              </button>
+            )}
+            {status === "scheduled" && onEdit && (
+              <button type="button" onClick={onEdit} className={button}>
+                Editar
               </button>
             )}
           </div>

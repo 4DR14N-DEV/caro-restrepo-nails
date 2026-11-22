@@ -245,6 +245,23 @@ export function reminderMessage(appointment: {
   return `Hola ${appointment.clientName}, te recuerdo tu cita de ${joinNames(appointment.services)} el ${formatWhen(appointment.date, appointment.time)} ¡Te espero!`;
 }
 
+type AdminMessageInput = {
+  clientName: string;
+  services: readonly string[];
+  date: string;
+  time: string;
+};
+
+// "Hola {nombre}, soy Caro. Te agendé {servicios} el {día} a las {hora}. ¡Te espero!"
+export function adminBookedMessage(appointment: AdminMessageInput): string {
+  return `Hola ${appointment.clientName}, soy Caro. Te agendé ${joinNames(appointment.services)} el ${formatWhen(appointment.date, appointment.time)} ¡Te espero!`;
+}
+
+// "Hola {nombre}, soy Caro. Moví tu cita de {servicios} al {día} a las {hora}. ¡Te espero!"
+export function adminMovedMessage(appointment: AdminMessageInput): string {
+  return `Hola ${appointment.clientName}, soy Caro. Moví tu cita de ${joinNames(appointment.services)} al ${formatWhen(appointment.date, appointment.time)} ¡Te espero!`;
+}
+
 // Enlace de WhatsApp con el mensaje ya escrito. El número va sin "+".
 export function whatsappLink(phone: string, text: string): string {
   return `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent(text)}`;

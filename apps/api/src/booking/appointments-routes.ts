@@ -17,7 +17,7 @@ import { and, asc, desc, eq, gt, gte, isNotNull, lte, ne, or } from "drizzle-orm
 import { Router, type Response } from "express";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
-import { DEADLOCK, EXCLUSION_VIOLATION, hasPgCode, LOCK_NOT_AVAILABLE } from "../db/errors.js";
+import { writeConflict } from "../db/errors.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
@@ -80,20 +80,13 @@ function rescheduleTooLate(res: Response): void {
     .json({ error: "reschedule_too_late", fields: { form: rescheduleTooLateMessage } });
 }
 
-// Errores al guardar una cita con los turnos tomados. Devuelve true si ya respondió.
+// Errores al guardar una cita con los turnos tomados. Devuelve true si ya respondió. Para la
+// clienta, una superposición frenada por la base es lo mismo que una hora ya tomada.
 function answeredWriteError(error: unknown, res: Response): boolean {
-  if (hasPgCode(error, LOCK_NOT_AVAILABLE)) {
-    res.status(503).json({ error: "busy" });
-    return true;
-  }
-  // Red de seguridad por si algo escribe citas sin el turno: la restricción de exclusión
-  // de la base impide la superposición (RF21) y, si dos escrituras se esperaban una a la
-  // otra, Postgres corta una con un interbloqueo. Para la clienta es lo mismo.
-  if (hasPgCode(error, EXCLUSION_VIOLATION) || hasPgCode(error, DEADLOCK)) {
-    slotTaken(res);
-    return true;
-  }
-  return false;
+  const kind = writeConflict(error);
+  if (kind === "busy") res.status(503).json({ error: "busy" });
+  if (kind === "clash") slotTaken(res);
+  return kind !== undefined;
 }
 
 // Una cita de la clienta, en cualquier estado; undefined si no existe o es de otra persona.

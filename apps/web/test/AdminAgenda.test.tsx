@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminAgenda } from "../src/components/AdminAgenda";
@@ -532,5 +532,196 @@ describe("AdminAgenda: horario en la semana y el mes", () => {
     });
     expect(blocked.textContent).toContain("Bloqueado");
     expect(screen.getByRole("button", { name: "jueves 26 de noviembre: 0 citas" })).toBeTruthy();
+  });
+});
+
+const ana = { id: "c1", name: "Ana María", phone: "+573001234567" };
+const luisa = { id: "c2", name: "Luisa", phone: "+573009876543" };
+const catalog = [
+  { id: "s1", name: "Semipermanente manos", priceCop: 40000, durationMinutes: 60 },
+  { id: "s3", name: "Retiro", priceCop: 15000, durationMinutes: 30 },
+];
+const booked = (values: Record<string, unknown>) =>
+  item({ serviceIds: ["s3", "s1"], client: ana, ...values });
+
+const bodyOf = (fetchMock: ReturnType<typeof mockApi>, method: string) => {
+  const call = fetchMock.mock.calls.find(([, init]) => init?.method === method);
+  return JSON.parse(String(call?.[1]?.body));
+};
+
+describe("AdminAgenda: citas a nombre de una clienta", () => {
+  it("«Nueva cita» busca la clienta, elige servicios, día y hora, y ofrece avisarle", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [] }),
+      "GET /api/admin/clients": () => json(200, { clients: [ana] }),
+      "GET /api/services": () => json(200, { services: catalog }),
+      "POST /api/admin/appointments": () =>
+        json(201, { appointment: booked({ date: "2026-11-24", time: "10:00" }) }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Nueva cita" }));
+    const form = await screen.findByRole("form", { name: "Cita" });
+    await userEvent.type(within(form).getByLabelText("Buscar clienta"), "ana");
+    await userEvent.click(
+      await within(form).findByRole("button", { name: "Ana María · +573001234567" }),
+    );
+    await userEvent.click(
+      await within(form).findByRole("checkbox", { name: /Semipermanente manos/ }),
+    );
+    await userEvent.click(within(form).getByRole("checkbox", { name: /Retiro/ }));
+    expect((within(form).getByLabelText("Día") as HTMLInputElement).value).toBe(TODAY);
+    fireEvent.change(within(form).getByLabelText("Día"), { target: { value: "2026-11-24" } });
+    await userEvent.selectOptions(within(form).getByLabelText("Hora"), "10:00");
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar" }));
+
+    expect(bodyOf(fetchMock, "POST")).toEqual({
+      clientId: "c1",
+      serviceIds: ["s1", "s3"],
+      date: "2026-11-24",
+      time: "10:00",
+    });
+    const done = await screen.findByRole("status");
+    expect(done.textContent).toContain("Cita guardada.");
+    expect(
+      within(done)
+        .getByRole("link", { name: "Avisar a Ana María por WhatsApp" })
+        .getAttribute("href"),
+    ).toBe(
+      "https://wa.me/573001234567?text=" +
+        encodeURIComponent(
+          "Hola Ana María, soy Caro. Te agendé Retiro y Semipermanente manos el martes 24 de noviembre a las 10:00 a. m. ¡Te espero!",
+        ),
+    );
+    expect(screen.queryByRole("form", { name: "Cita" })).toBeNull();
+  });
+
+  it("si la hora choca con otra cita, lo dice en el formulario", async () => {
+    mockApi({
+      "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [] }),
+      "GET /api/admin/clients": () => json(200, { clients: [ana] }),
+      "GET /api/services": () => json(200, { services: catalog }),
+      "POST /api/admin/appointments": () =>
+        json(409, { error: "slot_taken", fields: { time: "Esa hora choca con otra cita." } }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Nueva cita" }));
+    const form = await screen.findByRole("form", { name: "Cita" });
+    await userEvent.type(within(form).getByLabelText("Buscar clienta"), "ana");
+    await userEvent.click(
+      await within(form).findByRole("button", { name: "Ana María · +573001234567" }),
+    );
+    await userEvent.click(await within(form).findByRole("checkbox", { name: /Retiro/ }));
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar" }));
+
+    expect((await within(form).findByRole("alert")).textContent).toBe(
+      "Esa hora choca con otra cita.",
+    );
+  });
+
+  it("un día que ya pasó no ofrece «Nueva cita»", async () => {
+    mockApi({ "GET /api/admin/agenda": () => json(200, { appointments: [], exceptions: [] }) });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Día anterior" }));
+    await screen.findByRole("heading", { name: "domingo 22 de noviembre" });
+    expect(screen.queryByRole("button", { name: "Nueva cita" })).toBeNull();
+  });
+
+  it("«Editar» trae la cita cargada; mover la hora avisa con el mensaje de cambio", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, { appointments: [booked({ time: "15:00", canMark: false })], exceptions: [] }),
+      "GET /api/services": () => json(200, { services: catalog }),
+      "PATCH /api/admin/appointments/a1": () =>
+        json(200, { appointment: booked({ time: "16:30", canMark: false }) }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const card = nth(await screen.findAllByRole("listitem"), 0);
+    await userEvent.click(within(card).getByRole("button", { name: "Editar" }));
+    const form = await screen.findByRole("form", { name: "Cita" });
+    expect(within(form).getByText("Clienta: Ana María · +573001234567")).toBeTruthy();
+    expect(
+      ((await within(form).findByRole("checkbox", { name: /Retiro/ })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect((within(form).getByLabelText("Hora") as HTMLSelectElement).value).toBe("15:00");
+    await userEvent.selectOptions(within(form).getByLabelText("Hora"), "16:30");
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar" }));
+
+    expect(bodyOf(fetchMock, "PATCH")).toEqual({
+      clientId: "c1",
+      serviceIds: ["s1", "s3"],
+      date: TODAY,
+      time: "16:30",
+    });
+    const done = await screen.findByRole("status");
+    expect(
+      within(done)
+        .getByRole("link", { name: "Avisar a Ana María por WhatsApp" })
+        .getAttribute("href"),
+    ).toBe(
+      "https://wa.me/573001234567?text=" +
+        encodeURIComponent(
+          "Hola Ana María, soy Caro. Moví tu cita de Retiro y Semipermanente manos al lunes 23 de noviembre a las 4:30 p. m. ¡Te espero!",
+        ),
+    );
+  });
+
+  it("reasignar a otra clienta le avisa a la nueva con el mensaje de cita agendada", async () => {
+    const fetchMock = mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, { appointments: [booked({ time: "15:00", canMark: false })], exceptions: [] }),
+      "GET /api/services": () => json(200, { services: catalog }),
+      "GET /api/admin/clients": () => json(200, { clients: [luisa] }),
+      "PATCH /api/admin/appointments/a1": () =>
+        json(200, { appointment: booked({ time: "15:00", canMark: false, client: luisa }) }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    await userEvent.click(
+      within(nth(await screen.findAllByRole("listitem"), 0)).getByRole("button", {
+        name: "Editar",
+      }),
+    );
+    const form = await screen.findByRole("form", { name: "Cita" });
+    await userEvent.click(within(form).getByRole("button", { name: "Cambiar" }));
+    await userEvent.type(within(form).getByLabelText("Buscar clienta"), "luisa");
+    await userEvent.click(
+      await within(form).findByRole("button", { name: "Luisa · +573009876543" }),
+    );
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar" }));
+
+    expect(bodyOf(fetchMock, "PATCH").clientId).toBe("c2");
+    const done = await screen.findByRole("status");
+    expect(
+      within(done).getByRole("link", { name: "Avisar a Luisa por WhatsApp" }).getAttribute("href"),
+    ).toContain(encodeURIComponent("Hola Luisa, soy Caro. Te agendé"));
+  });
+
+  it("solo las citas agendadas tienen «Editar»; «Cancelar» cierra el formulario", async () => {
+    mockApi({
+      "GET /api/admin/agenda": () =>
+        json(200, {
+          appointments: [
+            booked({ time: "15:00", canMark: false }),
+            booked({ id: "a2", time: "08:00", status: "completed", canCancel: false }),
+          ],
+          exceptions: [],
+        }),
+      "GET /api/services": () => json(200, { services: catalog }),
+    });
+    render(<AdminAgenda today={TODAY} />);
+
+    const [scheduled, done] = await screen.findAllByRole("listitem");
+    expect(within(nth([done], 0)).queryByRole("button", { name: "Editar" })).toBeNull();
+    await userEvent.click(within(nth([scheduled], 0)).getByRole("button", { name: "Editar" }));
+    await userEvent.click(
+      within(await screen.findByRole("form", { name: "Cita" })).getByRole("button", {
+        name: "Cancelar",
+      }),
+    );
+    expect(screen.queryByRole("form", { name: "Cita" })).toBeNull();
   });
 });

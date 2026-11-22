@@ -69,17 +69,18 @@ describe("GET /api/admin/agenda", () => {
         date: "2026-11-23",
         time: "09:00",
         services: ["Retiro", "Semipermanente manos"],
+        serviceIds: expect.arrayContaining([expect.any(String)]),
         durationMinutes: 90,
         totalPriceCop: 55000,
         status: "scheduled",
-        client: { name: "Ana María", phone: "+573001234567" },
+        client: { id: ana.userId, name: "Ana María", phone: "+573001234567" },
         canMark: true,
         canCancel: true,
       },
       expect.objectContaining({
         id: later,
         time: "15:00",
-        client: { name: "Luisa", phone: "+573009876543" },
+        client: { id: luisa.userId, name: "Luisa", phone: "+573009876543" },
       }),
     ]);
   });
@@ -162,7 +163,11 @@ describe("GET /api/admin/agenda", () => {
 
     const { body } = await agenda(caro.cookie, { from: "2026-11-23", to: "2026-11-23" });
 
-    expect(body.appointments[0].client).toEqual({ name: "Cuenta borrada", phone: null });
+    expect(body.appointments[0].client).toEqual({
+      id: gone.id,
+      name: "Cuenta borrada",
+      phone: null,
+    });
   });
 
   it("rechaza un rango inválido o de más de 42 días", async () => {

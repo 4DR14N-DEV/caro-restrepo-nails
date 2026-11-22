@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminBookedMessage,
   adminCancelMessage,
+  adminMovedMessage,
   bookingMessage,
   reminderMessage,
   cancelMessage,
@@ -127,6 +129,27 @@ describe("mensajes de Caro a la clienta", () => {
   it("recuerda la cita", () => {
     expect(reminderMessage({ ...appointment, time: "13:00" })).toBe(
       "Hola Ana María, te recuerdo tu cita de Retiro y Semipermanente manos el lunes 23 de noviembre a la 1:00 p. m. ¡Te espero!",
+    );
+  });
+});
+
+describe("mensajes de Caro al agendar o mover a nombre de la clienta", () => {
+  const appointment = {
+    clientName: "Ana María",
+    services: ["Retiro", "Semipermanente manos"],
+    date: "2026-11-24",
+    time: "10:00",
+  };
+
+  it("avisa la cita que Caro agendó", () => {
+    expect(adminBookedMessage(appointment)).toBe(
+      "Hola Ana María, soy Caro. Te agendé Retiro y Semipermanente manos el martes 24 de noviembre a las 10:00 a. m. ¡Te espero!",
+    );
+  });
+
+  it("avisa la cita que Caro movió", () => {
+    expect(adminMovedMessage({ ...appointment, time: "13:00" })).toBe(
+      "Hola Ana María, soy Caro. Moví tu cita de Retiro y Semipermanente manos al martes 24 de noviembre a la 1:00 p. m. ¡Te espero!",
     );
   });
 });
