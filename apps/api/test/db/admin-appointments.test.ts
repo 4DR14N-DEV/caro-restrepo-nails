@@ -94,6 +94,21 @@ describe("GET /api/admin/clients", () => {
     expect(await search("caro")).toEqual([]);
     expect(await search("a")).toEqual([]);
   });
+
+  it("los comodines de la búsqueda (%, _ y \\) se buscan como texto", async () => {
+    const caro = await asCaro();
+    await signedIn("+573001234567", "Ana_María");
+    await signedIn("+573009876543", "Ana María");
+    const search = async (q: string) =>
+      (
+        (await request(app).get("/api/admin/clients").query({ q }).set("Cookie", caro.cookie)).body
+          .clients as { name: string }[]
+      ).map((c) => c.name);
+
+    expect(await search("a_m")).toEqual(["Ana_María"]);
+    expect(await search("%%")).toEqual([]);
+    expect(await search("a\\m")).toEqual([]);
+  });
 });
 
 describe("POST /api/admin/appointments", () => {
