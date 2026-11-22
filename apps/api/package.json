@@ -10,6 +10,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
     "db:create-admin": "tsx src/db/create-admin.ts",
+    "push:keys": "tsx src/push/generate-keys.ts",
     "test:db": "vitest run --config vitest.db.config.ts"
   },
   "dependencies": {
@@ -18,7 +19,8 @@
     "drizzle-orm": "^0.45.4",
     "express": "^5.3.0",
     "pg": "^8.23.1",
-    "serverless-http": "^4.0.0"
+    "serverless-http": "^4.0.0",
+    "web-push": "^3.6.7"
   },
   "optionalDependencies": {
     "@node-rs/argon2-linux-x64-gnu": "2.2.2"
@@ -28,6 +30,7 @@
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.11",
     "supertest": "^7.3.2",
     "tsx": "^4.23.15",

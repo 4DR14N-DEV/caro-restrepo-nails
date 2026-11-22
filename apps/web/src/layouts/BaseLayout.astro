@@ -16,6 +16,10 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <title>{title}</title>
+    <!-- Instalable en la pantalla de inicio: en iPhone es lo que permite los avisos push. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#171717" />
   </head>
   <body class="min-h-dvh bg-white text-neutral-900 antialiased">
     <slot />

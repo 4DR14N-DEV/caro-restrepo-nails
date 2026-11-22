@@ -1,6 +1,7 @@
 import type { PublicUser } from "@caro/shared";
 import { useEffect, useState } from "react";
 import { api, logoutErrorMessage } from "../lib/api";
+import { PushToggle } from "./PushToggle";
 
 // Después de borrar la cuenta (RF22), Mis citas trae a la clienta aquí con ?cuenta=borrada.
 function accountDeleted(): boolean {
@@ -75,6 +76,7 @@ export function AuthStatus() {
             Clientas
           </a>
         )}
+        {user.role === "admin" && <PushToggle />}
         <button
           type="button"
           onClick={logout}

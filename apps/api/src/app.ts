@@ -8,6 +8,9 @@ import { adminScheduleRouter } from "./booking/admin-schedule-routes.js";
 import { appointmentsRouter } from "./booking/appointments-routes.js";
 import { bookingRouter } from "./booking/routes.js";
 import type { Database } from "./db/client.js";
+import { adminPushRouter } from "./push/admin-routes.js";
+import { adminNotifier } from "./push/notify.js";
+import type { PushService } from "./push/sender.js";
 import { adminServicesRouter } from "./services/admin-routes.js";
 import { servicesRouter } from "./services/routes.js";
 
@@ -18,6 +21,8 @@ export interface AppDependencies {
   clientIp?: ClientIp;
   // Reloj de la app; los tests lo fijan para que la ventana de reserva sea predecible.
   now?: () => Date;
+  // Avisos push para Caro (RF18). Sin él (desarrollo, tests) no se envía ningún aviso.
+  push?: PushService | null;
 }
 
 const socketAddress: ClientIp = (req) => req.socket.remoteAddress;
@@ -28,8 +33,10 @@ export function createApp({
   db,
   clientIp = socketAddress,
   now = () => new Date(),
+  push = null,
 }: AppDependencies): Express {
   const app = express();
+  const notifyAdmins = adminNotifier(db, push);
 
   app.disable("x-powered-by");
   app.use(express.json());
@@ -38,7 +45,7 @@ export function createApp({
     res.json({ status: "ok" });
   });
 
-  app.use("/api/auth", authRouter(db, clientIp, now));
+  app.use("/api/auth", authRouter(db, clientIp, now, notifyAdmins));
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
   app.use("/api/admin/agenda", adminAgendaRouter(db, now));
@@ -47,8 +54,9 @@ export function createApp({
   app.use("/api/admin/schedule", adminScheduleRouter(db, now));
   app.use("/api/admin/appointments", adminBookingRouter(db, now));
   app.use("/api/admin/clients", adminClientsRouter(db, now));
+  app.use("/api/admin/push", adminPushRouter(db, push));
   app.use("/api/booking", bookingRouter(db, now));
-  app.use("/api/appointments", appointmentsRouter(db, now));
+  app.use("/api/appointments", appointmentsRouter(db, now, notifyAdmins));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

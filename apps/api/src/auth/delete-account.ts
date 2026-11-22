@@ -6,18 +6,19 @@ import { clearAttempts, limitKey, loginPhoneLimit } from "./rate-limit.js";
 
 // Borra la cuenta de una clienta (RF22, Ley 1581): se anonimizan sus datos y se conservan
 // las citas pasadas. Las próximas se cancelan (si no, quedarían a nombre de nadie) y liberan
-// la hora, sin el plazo de cancelación de las clientas. Todo en una transacción.
+// la hora, sin el plazo de cancelación de las clientas. Todo en una transacción. Devuelve las
+// citas que canceló, para avisarle a Caro (RF18).
 export async function deleteClientAccount(
   db: Database,
   user: { id: string; phone: string },
   current: Date,
-): Promise<void> {
-  await db.transaction(async (tx) => {
+): Promise<{ id: string; startAt: Date }[]> {
+  return db.transaction(async (tx) => {
     // Se bloquea la fila primero: una reserva de esta misma clienta que se esté guardando a
     // la vez espera a que termine el borrado.
     await tx.select({ id: users.id }).from(users).where(eq(users.id, user.id)).for("update");
 
-    await tx
+    const cancelled = await tx
       .update(appointments)
       .set({ status: "cancelled", cancelledBy: "client", cancelledAt: current })
       .where(
@@ -26,7 +27,8 @@ export async function deleteClientAccount(
           eq(appointments.status, "scheduled"),
           gte(appointments.startAt, current),
         ),
-      );
+      )
+      .returning({ id: appointments.id, startAt: appointments.startAt });
     await tx
       .update(users)
       .set({
@@ -40,6 +42,7 @@ export async function deleteClientAccount(
     await tx.delete(sessions).where(eq(sessions.userId, user.id));
     // Los intentos de ingreso se guardan con el celular: también se borran.
     await clearAttempts(tx, limitKey(loginPhoneLimit, user.phone));
+    return cancelled;
   });
 }
 

@@ -1,6 +1,7 @@
 import serverless from "serverless-http";
 import { createApp } from "../../src/app.js";
 import { createDatabase } from "../../src/db/client.js";
+import { pushServiceFromEnv } from "../../src/push/sender.js";
 
 // Adaptador de Netlify Functions: único archivo que conoce la plataforma.
 // DATABASE_URL debe apuntar al pooler de Supabase en modo transacción (puerto 6543).
@@ -19,4 +20,6 @@ const { db } = createDatabase(url ?? "", { max: 1 });
 const clientIp = (req: { get(name: string): string | undefined }) =>
   req.get("x-nf-client-connection-ip") || undefined;
 
-export const handler = serverless(createApp({ db, clientIp }));
+export const handler = serverless(
+  createApp({ db, clientIp, push: pushServiceFromEnv(process.env) }),
+);

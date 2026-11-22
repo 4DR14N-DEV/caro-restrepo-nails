@@ -8,7 +8,10 @@ import {
 } from "@caro/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { Router, type Request, type Response } from "express";
+import { bogotaDate, bogotaTime } from "../booking/dates.js";
+import { serviceNamesByAppointment } from "../booking/service-copies.js";
 import type { Database } from "../db/client.js";
+import type { NotifyAdmins } from "../push/notify.js";
 import { users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from "./cookies.js";
@@ -56,7 +59,12 @@ function wrongPassword(res: Response): void {
 // Devuelve la IP de la clienta, o undefined si la plataforma no la informa.
 export type ClientIp = (req: Request) => string | undefined;
 
-export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): Router {
+export function authRouter(
+  db: Database,
+  clientIp: ClientIp,
+  now: () => Date,
+  notifyAdmins: NotifyAdmins = async () => {},
+): Router {
   const router = Router();
 
   router.post("/register", async (req, res) => {
@@ -240,7 +248,25 @@ export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): R
     if (typeof check === "number") return tooManyAttempts(res, check);
     if (check === "wrong") return wrongPassword(res);
 
-    await deleteClientAccount(db, user, now());
+    const cancelled = await deleteClientAccount(db, user, now());
+    // Un aviso por cada cita próxima cancelada, con el nombre que tenía la clienta. Los
+    // servicios se leen dentro del aviso: si esa lectura falla, el borrado igual responde 204.
+    await notifyAdmins(async () => {
+      if (cancelled.length === 0) return [];
+      const names = await serviceNamesByAppointment(
+        db,
+        cancelled.map((appointment) => appointment.id),
+      );
+      return cancelled
+        .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+        .map((appointment) => ({
+          kind: "cancelled" as const,
+          clientName: user.name,
+          services: names.get(appointment.id) ?? [],
+          date: bogotaDate(appointment.startAt),
+          time: bogotaTime(appointment.startAt),
+        }));
+    });
     clearSessionCookie(res);
     res.status(204).end();
   });

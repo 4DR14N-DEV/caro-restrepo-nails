@@ -8,6 +8,7 @@ import {
   formatDay,
   formatMonth,
   formatTime,
+  isCalendarDate,
   monthGrid,
   shiftMonth,
   weekDays,
@@ -69,10 +70,18 @@ interface Props {
   today?: string;
 }
 
+// Día que pide la dirección (?dia=2026-11-30): así abren la agenda los avisos push (RF18).
+// Al compilar la página no hay dirección: se usa hoy.
+function requestedDay(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const day = new URLSearchParams(window.location.search).get("dia");
+  return day && isCalendarDate(day) ? day : undefined;
+}
+
 // Agenda de Caro (RF10): día, semana y mes, con marcar estado (RF12) y recordatorios (RF19).
 export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
   const [view, setView] = useState<View>("day");
-  const [anchor, setAnchor] = useState(today);
+  const [anchor, setAnchor] = useState(() => requestedDay() ?? today);
   const [withCancelled, setWithCancelled] = useState(false);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   // Cambiarlo recarga la agenda sin volver a "Cargando…".

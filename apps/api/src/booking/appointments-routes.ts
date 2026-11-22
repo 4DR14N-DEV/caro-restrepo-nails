@@ -19,6 +19,7 @@ import { holdActiveAccount } from "../auth/delete-account.js";
 import { currentUser } from "../auth/require-user.js";
 import type { Database } from "../db/client.js";
 import { writeConflict } from "../db/errors.js";
+import type { NotifyAdmins } from "../push/notify.js";
 import { appointments, appointmentServices, users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { addDays, bogotaDate, bogotaInstant, bogotaTime, MINUTE } from "./dates.js";
@@ -135,7 +136,11 @@ async function withServices(
   });
 }
 
-export function appointmentsRouter(db: Database, now: () => Date): Router {
+export function appointmentsRouter(
+  db: Database,
+  now: () => Date,
+  notifyAdmins: NotifyAdmins = async () => {},
+): Router {
   const router = Router();
 
   // Mis citas (RF07): solo las de la cuenta con sesión.
@@ -215,6 +220,15 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
 
     const [appointment] = await withServices(db, [row], current, rules);
     if (!appointment) throw new Error("No se leyó la cita cancelada.");
+    await notifyAdmins([
+      {
+        kind: "cancelled",
+        clientName: user.name,
+        services: appointment.services,
+        date: appointment.date,
+        time: appointment.time,
+      },
+    ]);
     const result: AppointmentChange = { appointment, caroWhatsapp };
     // Datos personales, como en la lista: que no queden guardados en ningún lado.
     res.set("Cache-Control", "no-store").json(result);
@@ -301,6 +315,16 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
 
     const [appointment] = await withServices(db, [outcome.moved], now(), rules);
     if (!appointment) throw new Error("No se leyó la cita reprogramada.");
+    await notifyAdmins([
+      {
+        kind: "rescheduled",
+        clientName: user.name,
+        services: appointment.services,
+        from: { date: bogotaDate(own.startAt), time: bogotaTime(own.startAt) },
+        date: appointment.date,
+        time: appointment.time,
+      },
+    ]);
     const result: AppointmentChange = { appointment, caroWhatsapp };
     res.set("Cache-Control", "no-store").json(result);
   });
@@ -390,6 +414,15 @@ export function appointmentsRouter(db: Database, now: () => Date): Router {
       },
       caroWhatsapp,
     };
+    await notifyAdmins([
+      {
+        kind: "booked",
+        clientName: user.name,
+        services: result.appointment.services,
+        date,
+        time,
+      },
+    ]);
     res.status(201).json(result);
   });
 
