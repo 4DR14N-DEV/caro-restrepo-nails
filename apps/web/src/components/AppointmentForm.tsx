@@ -134,7 +134,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
                       setClient(found);
                       setQuery("");
                     }}
-                    className="h-10 w-full rounded-lg border border-line px-3 text-left text-sm"
+                    className="h-11 w-full rounded-xl border border-line px-3 text-left text-sm text-ink"
                   >
                     {found.name} · {found.phone}
                   </button>

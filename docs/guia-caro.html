@@ -1,0 +1,420 @@
+<!doctype html>
+<!--
+  Guía de uso para Caro (entrega 15). Se imprime a docs/guia-caro.pdf con Brave sin interfaz,
+  sirviendo esta página junto al sitio compilado para que cargue las fuentes del sitio
+  (el marcador STYLESHEET se reemplaza por la hoja de estilos de apps/web/dist/_astro).
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Guía para Caro · Caro Restrepo Nails</title>
+    <link rel="stylesheet" href="STYLESHEET" />
+    <style>
+      @page {
+        size: A4;
+        margin: 16mm 16mm 18mm;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #fff;
+        color: #33262a;
+        font-family: "Jost Variable", "Jost", system-ui, sans-serif;
+        font-size: 11pt;
+        line-height: 1.5;
+      }
+      .cover {
+        text-align: center;
+        padding-top: 30mm;
+        break-after: page;
+      }
+      .cover img {
+        width: 100%;
+        border-radius: 8px;
+      }
+      .cover h1 {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 500;
+        font-size: 34pt;
+        margin: 18mm 0 4mm;
+      }
+      .cover p {
+        color: #6b585d;
+        font-size: 13pt;
+        margin: 0;
+      }
+      .cover .url {
+        margin-top: 10mm;
+        display: inline-block;
+        padding: 3mm 6mm;
+        border: 1px solid #d9c4ba;
+        border-radius: 999px;
+        color: #9a4a62;
+        font-weight: 500;
+      }
+      h2 {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 500;
+        font-size: 21pt;
+        margin: 8mm 0 2mm;
+        padding-bottom: 1.5mm;
+        border-bottom: 1px solid #c9ae7e;
+        break-after: avoid;
+      }
+      h3 {
+        font-size: 11.5pt;
+        font-weight: 600;
+        margin: 4mm 0 1mm;
+        break-after: avoid;
+      }
+      p {
+        margin: 1mm 0 2mm;
+      }
+      ol,
+      ul {
+        margin: 1mm 0 3mm;
+        padding-left: 6mm;
+      }
+      ol {
+        list-style: decimal;
+      }
+      ul {
+        list-style: disc;
+      }
+      li::marker {
+        color: #9a4a62;
+      }
+      li {
+        margin: 0.8mm 0;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0 2mm;
+        border-radius: 3px;
+        background: #f2ccd7;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .tip {
+        margin: 3mm 0;
+        padding: 3mm 4mm;
+        border-radius: 6px;
+        background: #faf6f3;
+        border-left: 3px solid #c9ae7e;
+        break-inside: avoid;
+      }
+      .tip strong {
+        color: #9a4a62;
+      }
+      h3 + ol,
+      h3 + ul,
+      h3 + p {
+        break-before: avoid;
+      }
+      table {
+        break-inside: avoid;
+        width: 100%;
+        border-collapse: collapse;
+        margin: 2mm 0 3mm;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 1.5mm 2mm;
+        border-bottom: 1px solid #ece0d8;
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+        background: #faf6f3;
+      }
+      .footer {
+        margin-top: 10mm;
+        text-align: center;
+        color: #6b585d;
+        font-size: 9.5pt;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cover">
+      <img src="banner.png" alt="Caro Restrepo Nails" />
+      <h1>Guía para Caro</h1>
+      <p>Cómo usar tu sistema de reservas, paso a paso</p>
+      <div class="url">caro-restrepo-nails.netlify.app</div>
+    </div>
+
+    <section>
+      <h2>1. Antes de empezar</h2>
+      <h3>Entra con tu cuenta</h3>
+      <ol>
+        <li>Abre la página y toca <span class="btn">Ingresar</span>.</li>
+        <li>Escribe tu celular y tu contraseña.</li>
+        <li>
+          En el inicio verás tus botones: <span class="btn">Ver agenda</span>,
+          <span class="btn">Administrar servicios</span>,
+          <span class="btn">Horario y reglas</span> y <span class="btn">Clientas</span>.
+        </li>
+      </ol>
+      <h3>Instala la página en tu celular</h3>
+      <ul>
+        <li>
+          <strong>iPhone:</strong> ábrela en Safari, toca <em>Compartir</em> y luego
+          <em>Agregar a pantalla de inicio</em>. Después ábrela siempre desde ese ícono (el
+          colibrí).
+        </li>
+        <li>
+          <strong>Android:</strong> ábrela en Chrome, toca el menú <em>⋮</em> y elige
+          <em>Instalar app</em> o <em>Agregar a pantalla de inicio</em>.
+        </li>
+      </ul>
+      <h3>Activa los avisos</h3>
+      <ol>
+        <li>
+          En el inicio, en "Avisos de citas", toca
+          <span class="btn">Activar avisos en este dispositivo</span>.
+        </li>
+        <li>Cuando el celular pregunte, toca <em>Permitir</em>.</li>
+        <li>
+          Listo: te llega un aviso cada vez que una clienta reserva, cancela o reprograma. Al
+          tocarlo, se abre la agenda en el día de esa cita.
+        </li>
+      </ol>
+      <div class="tip">
+        <strong>Tip:</strong> los avisos se activan en cada dispositivo por separado. Si cambias de
+        celular, vuelve a activarlos.
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Tu agenda</h2>
+      <p>Toca <span class="btn">Ver agenda</span>.</p>
+      <ul>
+        <li>
+          Arriba eliges cómo verla: <span class="btn">Día</span>, <span class="btn">Semana</span> o
+          <span class="btn">Mes</span>.
+        </li>
+        <li>
+          Con <span class="btn">Día anterior</span> y <span class="btn">Día siguiente</span> te
+          mueves; <span class="btn">Hoy</span> te devuelve al día de hoy.
+        </li>
+        <li>
+          Cada cita muestra la hora, la clienta, su celular (tócalo para llamarla), los servicios,
+          la duración y el total.
+        </li>
+        <li>
+          Las citas canceladas no aparecen; marca <em>Mostrar canceladas</em> si quieres verlas.
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. Crear, mover y cancelar citas</h2>
+      <h3>Crear una cita para una clienta</h3>
+      <ol>
+        <li>
+          En la vista de un día (de hoy en adelante), toca <span class="btn">Nueva cita</span>.
+        </li>
+        <li>En "Buscar clienta" escribe su nombre o su celular y tócala en la lista.</li>
+        <li>Marca los servicios y elige el día y la hora.</li>
+        <li>Toca <span class="btn">Guardar</span>.</li>
+        <li>
+          Si quieres, toca <span class="btn">Avisar a … por WhatsApp</span>: el mensaje ya va
+          escrito.
+        </li>
+      </ol>
+      <div class="tip">
+        <strong>Importante:</strong> tú no tienes las reglas de las clientas. Puedes agendar a
+        cualquier hora y con cualquier anticipación. La clienta tiene que tener su cuenta creada.
+      </div>
+      <h3>Mover o cambiar una cita</h3>
+      <ol>
+        <li>En la cita, toca <span class="btn">Editar</span>.</li>
+        <li>
+          Cambia la clienta, los servicios, el día o la hora y toca
+          <span class="btn">Guardar</span>.
+        </li>
+        <li>El sistema te ofrece avisarle por WhatsApp con el cambio.</li>
+      </ol>
+      <h3>Cancelar una cita</h3>
+      <ol>
+        <li>
+          En la cita, toca <span class="btn">Cancelar</span> y confirma con
+          <span class="btn">Sí, cancelar</span>.
+        </li>
+        <li>La hora queda libre y puedes avisarle a la clienta por WhatsApp.</li>
+      </ol>
+      <h3>Marcar cómo salió la cita</h3>
+      <p>
+        Cuando la cita ya empezó, márcala como <span class="btn">Completada</span> o
+        <span class="btn">No asistió</span>. Así llevas el registro de cada clienta.
+      </p>
+      <h3>Recordarle la cita a una clienta</h3>
+      <p>
+        Toca <span class="btn">Recordar por WhatsApp</span> en la cita: se abre WhatsApp con el
+        recordatorio escrito, solo tienes que enviarlo.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Bloquear días, descansos y abrir más temprano</h2>
+      <p>En la vista de un <strong>día</strong>, baja hasta "Horario del día":</p>
+      <ol>
+        <li>En "Qué", elige una opción (ver tabla).</li>
+        <li>Si aplica, elige <em>Desde</em> y <em>Hasta</em>, y escribe un motivo (opcional).</li>
+        <li>
+          Toca <span class="btn">Agregar</span>. Para deshacerlo, toca
+          <span class="btn">Quitar</span>.
+        </li>
+      </ol>
+      <table>
+        <tr>
+          <th>Opción</th>
+          <th>Para qué sirve</th>
+        </tr>
+        <tr>
+          <td>Bloquear todo el día</td>
+          <td>Un día que no atiendes (vacaciones, una diligencia).</td>
+        </tr>
+        <tr>
+          <td>Bloquear una franja</td>
+          <td>Unas horas en las que no recibes clientas.</td>
+        </tr>
+        <tr>
+          <td>Descanso</td>
+          <td>Tu pausa de ese día (por ejemplo, el almuerzo).</td>
+        </tr>
+        <tr>
+          <td>Abrir más temprano</td>
+          <td>Empezar antes de tu horario normal, desde las 8:00 a. m.</td>
+        </tr>
+      </table>
+      <div class="tip">
+        <strong>No tienes que hacer nada</strong> con los domingos ni con los festivos de Colombia:
+        el sistema ya los tiene cerrados.
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Tu horario y tus reglas</h2>
+      <p>Toca <span class="btn">Horario y reglas</span>.</p>
+      <ul>
+        <li>
+          Para cada día de lunes a sábado: marca si abre y elige desde qué hora y hasta qué hora.
+        </li>
+        <li>
+          <strong>Margen entre citas:</strong> los minutos que quedan libres después de cada cita.
+        </li>
+        <li>
+          <strong>Reglas para las clientas:</strong> con cuántos días de anticipación pueden
+          reservar, hasta cuántos meses, hasta cuántas horas antes pueden cancelar y hasta cuántos
+          días antes pueden reprogramar.
+        </li>
+        <li>Toca <span class="btn">Guardar</span>.</li>
+      </ul>
+      <div class="tip">
+        <strong>Tranquila:</strong> los cambios valen para las reservas nuevas. Las citas ya
+        agendadas no se mueven, y si alguna queda por fuera del horario nuevo, el sistema te muestra
+        cuáles son.
+      </div>
+    </section>
+
+    <section>
+      <h2>6. Tus servicios</h2>
+      <p>Toca <span class="btn">Administrar servicios</span>.</p>
+      <ul>
+        <li>
+          <span class="btn">Agregar servicio</span>: escribe el nombre, el precio en pesos y la
+          duración en minutos, y toca <span class="btn">Guardar</span>.
+        </li>
+        <li><span class="btn">Editar</span>: cambia el precio, el nombre o la duración.</li>
+        <li>
+          <span class="btn">Desactivar</span>: el servicio deja de verse en el catálogo, pero no se
+          borra. Puedes volver a activarlo cuando quieras.
+        </li>
+      </ul>
+      <div class="tip">
+        <strong>Bueno saber:</strong> si cambias un precio, las citas que ya estaban reservadas
+        conservan el precio con el que se reservaron.
+      </div>
+    </section>
+
+    <section>
+      <h2>7. Tus clientas</h2>
+      <p>
+        Toca <span class="btn">Clientas</span>. Ves a todas las clientas con cuenta, cuándo se
+        registraron y cuántas citas próximas tienen. Arriba puedes buscar por nombre o celular.
+      </p>
+      <h3>Si una clienta olvidó su contraseña</h3>
+      <ol>
+        <li>Búscala y toca <span class="btn">Restablecer contraseña</span>.</li>
+        <li>Confirma con <span class="btn">Generar contraseña</span>.</li>
+        <li>
+          Aparece una contraseña nueva <strong>una sola vez</strong>. Toca
+          <span class="btn">Enviar por WhatsApp</span> y se la mandas con el mensaje ya escrito.
+        </li>
+      </ol>
+      <p>Su contraseña anterior deja de servir. Después, ella puede cambiarla desde "Mis citas".</p>
+    </section>
+
+    <section>
+      <h2>8. Lo que pueden hacer tus clientas</h2>
+      <table>
+        <tr>
+          <th>Acción</th>
+          <th>Regla (puedes cambiarla en Horario y reglas)</th>
+        </tr>
+        <tr>
+          <td>Crear su cuenta</td>
+          <td>Con nombre, celular y contraseña, aceptando la política de datos.</td>
+        </tr>
+        <tr>
+          <td>Reservar</td>
+          <td>Entre 2 días y 1 mes de anticipación. La cita queda confirmada al instante.</td>
+        </tr>
+        <tr>
+          <td>Cancelar</td>
+          <td>Hasta 2 horas antes de la cita.</td>
+        </tr>
+        <tr>
+          <td>Reprogramar</td>
+          <td>Si faltan 2 días o más.</td>
+        </tr>
+        <tr>
+          <td>Borrar su cuenta</td>
+          <td>
+            Desde "Mis citas". Se borran su nombre y su celular, y se cancelan sus citas próximas.
+          </td>
+        </tr>
+      </table>
+      <p>
+        Si una clienta necesita algo fuera de estas reglas, que te escriba por WhatsApp: tú puedes
+        hacerlo desde tu agenda.
+      </p>
+    </section>
+
+    <section>
+      <h2>9. Si algo no funciona</h2>
+      <ul>
+        <li>
+          <strong>No me llegan los avisos:</strong> en el inicio, revisa que diga "Los avisos están
+          activos en este dispositivo". Si no, actívalos de nuevo y permite las notificaciones.
+        </li>
+        <li>
+          <strong>Dice "No pudimos cargar…":</strong> revisa tu internet y toca
+          <span class="btn">Reintentar</span>.
+        </li>
+        <li>
+          <strong>Me pide ingresar otra vez:</strong> tu sesión venció; ingresa con tu celular y tu
+          contraseña.
+        </li>
+        <li>
+          <strong>Otra cosa:</strong> escríbele a quien te ayuda con el sistema, con una captura de
+          pantalla de lo que ves.
+        </li>
+      </ul>
+    </section>
+
+    <p class="footer">Caro Restrepo Nails · Guía de uso del panel</p>
+  </body>
+</html>
