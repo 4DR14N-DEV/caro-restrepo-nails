@@ -2,6 +2,11 @@ import type { PublicUser } from "@caro/shared";
 import { useEffect, useState } from "react";
 import { api, logoutErrorMessage } from "../lib/api";
 
+// Después de borrar la cuenta (RF22), Mis citas trae a la clienta aquí con ?cuenta=borrada.
+function accountDeleted(): boolean {
+  return new URLSearchParams(window.location.search).get("cuenta") === "borrada";
+}
+
 // Muestra los enlaces de ingreso o, si hay sesión, el saludo y el botón para salir.
 export function AuthStatus() {
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
@@ -62,6 +67,14 @@ export function AuthStatus() {
             Horario y reglas
           </a>
         )}
+        {user.role === "admin" && (
+          <a
+            href="/admin/clientas"
+            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          >
+            Clientas
+          </a>
+        )}
         <button
           type="button"
           onClick={logout}
@@ -79,19 +92,29 @@ export function AuthStatus() {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-      <a
-        href="/registro"
-        className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
-      >
-        Crear cuenta
-      </a>
-      <a
-        href="/ingreso"
-        className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
-      >
-        Ingresar
-      </a>
+    <div className="flex flex-col gap-3">
+      {accountDeleted() && (
+        <p
+          role="status"
+          className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-900"
+        >
+          Tu cuenta fue borrada.
+        </p>
+      )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <a
+          href="/registro"
+          className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+        >
+          Crear cuenta
+        </a>
+        <a
+          href="/ingreso"
+          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+        >
+          Ingresar
+        </a>
+      </div>
     </div>
   );
 }

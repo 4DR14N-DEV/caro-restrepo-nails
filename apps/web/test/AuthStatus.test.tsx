@@ -36,6 +36,23 @@ describe("AuthStatus", () => {
     expect(screen.getByRole("link", { name: "Ingresar" })).toBeTruthy();
   });
 
+  it("después de borrar la cuenta avisa que se borró", async () => {
+    window.history.replaceState(null, "", "/?cuenta=borrada");
+    mockApi({ me: json(401, { error: "unauthorized" }) });
+    render(<AuthStatus />);
+
+    expect((await screen.findByRole("status")).textContent).toBe("Tu cuenta fue borrada.");
+    expect(screen.getByRole("link", { name: "Crear cuenta" })).toBeTruthy();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("sin ese aviso en la dirección no dice nada de borrar", async () => {
+    mockApi({ me: json(401, { error: "unauthorized" }) });
+    render(<AuthStatus />);
+    await screen.findByRole("link", { name: "Crear cuenta" });
+    expect(screen.queryByText("Tu cuenta fue borrada.")).toBeNull();
+  });
+
   it("con sesión saluda y, al salir bien, vuelve a mostrar los enlaces", async () => {
     const fetchMock = mockApi({ me: json(200, { user: ana }) });
     render(<AuthStatus />);
@@ -64,6 +81,9 @@ describe("AuthStatus", () => {
     expect(screen.getByRole("link", { name: "Horario y reglas" }).getAttribute("href")).toBe(
       "/admin/horario",
     );
+    expect(screen.getByRole("link", { name: "Clientas" }).getAttribute("href")).toBe(
+      "/admin/clientas",
+    );
   });
 
   it("a una clienta no le muestra el enlace al panel", async () => {
@@ -74,6 +94,7 @@ describe("AuthStatus", () => {
     expect(screen.queryByRole("link", { name: "Administrar servicios" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ver agenda" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Horario y reglas" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Clientas" })).toBeNull();
   });
 
   it("con sesión muestra el enlace a Mis citas", async () => {

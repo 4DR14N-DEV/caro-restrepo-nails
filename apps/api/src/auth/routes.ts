@@ -1,14 +1,24 @@
-import { loginSchema, registerSchema, type PublicUser } from "@caro/shared";
-import { eq } from "drizzle-orm";
+import {
+  changePasswordSchema,
+  deleteAccountSchema,
+  loginSchema,
+  registerSchema,
+  wrongPasswordMessage,
+  type PublicUser,
+} from "@caro/shared";
+import { and, eq, isNull } from "drizzle-orm";
 import { Router, type Request, type Response } from "express";
 import type { Database } from "../db/client.js";
 import { users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from "./cookies.js";
+import { checkCurrentPassword } from "./current-password.js";
+import { deleteClientAccount } from "./delete-account.js";
 import { hashPassword, verifyAgainstDummy, verifyPassword } from "./password.js";
 import {
   createSession,
   deleteExpiredSessions,
+  deleteOtherSessions,
   deleteSession,
   validateSession,
 } from "./sessions.js";
@@ -24,6 +34,7 @@ import {
   registerIpLimit,
   releaseAttempt,
 } from "./rate-limit.js";
+import { currentUser } from "./require-user.js";
 
 function toPublicUser(user: { id: string; name: string; phone: string; role: PublicUser["role"] }) {
   return { id: user.id, name: user.name, phone: user.phone, role: user.role } satisfies PublicUser;
@@ -36,10 +47,16 @@ function tooManyAttempts(res: Response, retryAfterSeconds: number): void {
     .json({ error: "too_many_attempts" });
 }
 
+function wrongPassword(res: Response): void {
+  res
+    .status(400)
+    .json({ error: "wrong_password", fields: { currentPassword: wrongPasswordMessage } });
+}
+
 // Devuelve la IP de la clienta, o undefined si la plataforma no la informa.
 export type ClientIp = (req: Request) => string | undefined;
 
-export function authRouter(db: Database, clientIp: ClientIp): Router {
+export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): Router {
   const router = Router();
 
   router.post("/register", async (req, res) => {
@@ -171,6 +188,59 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
   router.post("/logout", async (req, res) => {
     const token = readSessionCookie(req);
     if (token) await deleteSession(db, token);
+    clearSessionCookie(res);
+    res.status(204).end();
+  });
+
+  // Cambiar la contraseña con la actual. La sesión de este navegador sigue; las demás se
+  // cierran (por ejemplo, si alguien más conocía la contraseña vieja).
+  router.post("/password", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) return invalidInput(res, parsed.error);
+
+    const check = await checkCurrentPassword(db, user, parsed.data.currentPassword);
+    if (typeof check === "number") return tooManyAttempts(res, check);
+    if (check === "wrong") return wrongPassword(res);
+
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    const token = readSessionCookie(req) ?? "";
+    // Solo una cuenta activa: si la clienta la borró a la vez desde otro dispositivo, la
+    // cuenta borrada no recibe una contraseña nueva.
+    const changed = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(users)
+        .set({ passwordHash, updatedAt: now() })
+        .where(and(eq(users.id, user.id), isNull(users.anonymizedAt)))
+        .returning({ id: users.id });
+      if (!row) return false;
+      await deleteOtherSessions(tx, user.id, token);
+      return true;
+    });
+    if (!changed) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    res.status(204).end();
+  });
+
+  // Borrar la cuenta (RF22), confirmando con la contraseña. La cuenta de Caro no se borra.
+  router.post("/account/delete", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    if (user.role !== "client") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const parsed = deleteAccountSchema.safeParse(req.body);
+    if (!parsed.success) return invalidInput(res, parsed.error);
+
+    const check = await checkCurrentPassword(db, user, parsed.data.currentPassword);
+    if (typeof check === "number") return tooManyAttempts(res, check);
+    if (check === "wrong") return wrongPassword(res);
+
+    await deleteClientAccount(db, user, now());
     clearSessionCookie(res);
     res.status(204).end();
   });

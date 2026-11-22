@@ -7,10 +7,10 @@ import {
   slotClashMessage,
   summarize,
   type AgendaChange,
-  type ClientSummary,
 } from "@caro/shared";
-import { and, asc, eq, gt, ilike, isNull, like, lt, ne, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, ne } from "drizzle-orm";
 import { Router, type Response } from "express";
+import { holdActiveAccount } from "../auth/delete-account.js";
 import { requireAdmin } from "../auth/require-admin.js";
 import type { Database } from "../db/client.js";
 import { writeConflict } from "../db/errors.js";
@@ -22,7 +22,8 @@ import { limitLockWait, lockDay } from "./locks.js";
 import { serviceUnavailable } from "./responses.js";
 import { loadActiveServices, loadSettings } from "./schedule.js";
 
-const SEARCH_LIMIT = 10;
+// La cita no se guardó porque la clienta borró su cuenta mientras tanto.
+const CLIENT_GONE = "client_gone";
 
 function conflict(res: Response, error: string, field: string, message: string): void {
   res.status(409).json({ error, fields: { [field]: message } });
@@ -68,44 +69,6 @@ async function clashes(
   return Boolean(other);
 }
 
-// Búsqueda de clientas para agendar a su nombre: por nombre o por celular.
-export function adminClientsRouter(db: Database): Router {
-  const router = Router();
-  router.use(requireAdmin(db));
-
-  router.get("/", async (req, res) => {
-    const q = String(req.query.q ?? "").trim();
-    if (q.length < 2) {
-      res.json({ clients: [] });
-      return;
-    }
-    // Los comodines de LIKE que escriba Caro se buscan como texto.
-    const text = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-    const digits = q.replace(/\D/g, "");
-    const rows = await db
-      .select({ id: users.id, name: users.name, phone: users.phone })
-      .from(users)
-      .where(
-        and(
-          eq(users.role, "client"),
-          isNull(users.anonymizedAt),
-          or(
-            ilike(users.name, text),
-            digits.length >= 3 ? like(users.phone, `%${digits}%`) : undefined,
-          ),
-        ),
-      )
-      .orderBy(asc(users.name), asc(users.id))
-      .limit(SEARCH_LIMIT);
-    const clients: ClientSummary[] = rows.flatMap((row) =>
-      row.phone ? [{ id: row.id, name: row.name, phone: row.phone }] : [],
-    );
-    res.set("Cache-Control", "no-store").json({ clients });
-  });
-
-  return router;
-}
-
 // Citas que Caro agenda a nombre de una clienta (RF11), sin las restricciones de las
 // clientas: cualquier día y hora desde ahora, en pasos de 15 minutos. Lo único que no se
 // puede es pisar otra cita agendada. Solo admin.
@@ -144,6 +107,8 @@ export function adminBookingRouter(db: Database, now: () => Date): Router {
         // El turno del día, el mismo de las reservas.
         await limitLockWait(tx);
         await lockDay(tx, date);
+        // La clienta sigue con cuenta: si la borra a la vez, la cita no queda a nombre de nadie.
+        if (!(await holdActiveAccount(tx, clientId, true))) return CLIENT_GONE;
         if (await clashes(tx, startAt, occupiedUntil)) return undefined;
         const [row] = await tx
           .insert(appointments)
@@ -171,6 +136,9 @@ export function adminBookingRouter(db: Database, now: () => Date): Router {
     } catch (error) {
       if (answeredWriteError(error, res)) return;
       throw error;
+    }
+    if (id === CLIENT_GONE) {
+      return conflict(res, "client_unavailable", "clientId", clientUnavailableMessage);
     }
     if (!id) return conflict(res, "slot_taken", "time", slotClashMessage);
     await respond(res, id, 201);
@@ -217,7 +185,7 @@ export function adminBookingRouter(db: Database, now: () => Date): Router {
     const endAt = new Date(startAt.getTime() + durationMinutes * MINUTE);
     const occupiedUntil = new Date(endAt.getTime() + rules.bufferMinutes * MINUTE);
 
-    let outcome: "saved" | "not_editable" | "clash";
+    let outcome: "saved" | "not_editable" | "clash" | "client_gone";
     try {
       outcome = await db.transaction(async (tx) => {
         // Turnos del día viejo y del nuevo, siempre en orden de fecha (como reprogramar).
@@ -225,6 +193,9 @@ export function adminBookingRouter(db: Database, now: () => Date): Router {
         for (const day of [...new Set([bogotaDate(existing.startAt), date])].sort()) {
           await lockDay(tx, day);
         }
+        // Primero la cuenta y después la cita, en el mismo orden que el borrado de la cuenta:
+        // así las dos no se esperan mutuamente.
+        if (!(await holdActiveAccount(tx, clientId, true))) return "client_gone";
         const [fresh] = await tx
           .select({ status: appointments.status })
           .from(appointments)
@@ -266,6 +237,9 @@ export function adminBookingRouter(db: Database, now: () => Date): Router {
       return conflict(res, "not_editable", "form", notEditableMessage);
     }
     if (outcome === "clash") return conflict(res, "slot_taken", "time", slotClashMessage);
+    if (outcome === "client_gone") {
+      return conflict(res, "client_unavailable", "clientId", clientUnavailableMessage);
+    }
     await respond(res, id, 200);
   });
 

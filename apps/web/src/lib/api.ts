@@ -4,13 +4,17 @@ import type {
   Agenda,
   AgendaChange,
   AppointmentChange,
+  ChangePasswordInput,
+  ClientRow,
   ClientSummary,
+  DeleteAccountInput,
   ExceptionRequest,
   ExceptionResult,
   MarkedStatus,
   BookingRequest,
   BookingResult,
   MyAppointments,
+  PasswordReset,
   PublicService,
   PublicUser,
   ScheduleSaved,
@@ -67,6 +71,8 @@ export const api = {
   login: (body: unknown) => call<{ user: PublicUser }>("POST", "/api/auth/login", body),
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
+  changePassword: (body: ChangePasswordInput) => call<null>("POST", "/api/auth/password", body),
+  deleteAccount: (body: DeleteAccountInput) => call<null>("POST", "/api/auth/account/delete", body),
   services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
   adminServices: () => call<{ services: AdminService[] }>("GET", "/api/admin/services"),
   createService: (body: ServiceData) =>
@@ -86,6 +92,9 @@ export const api = {
       "GET",
       `/api/admin/agenda?${new URLSearchParams({ from, to, ...(withCancelled ? { cancelled: "1" } : {}) })}`,
     ),
+  adminClients: () => call<{ clients: ClientRow[] }>("GET", "/api/admin/clients/list"),
+  resetClientPassword: (id: string) =>
+    call<PasswordReset>("POST", `/api/admin/clients/${encodeURIComponent(id)}/password`),
   searchClients: (q: string) =>
     call<{ clients: ClientSummary[] }>("GET", `/api/admin/clients?${new URLSearchParams({ q })}`),
   createAppointment: (body: AdminAppointmentRequest) =>

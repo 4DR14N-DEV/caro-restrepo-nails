@@ -39,6 +39,28 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Escribe tu contraseña.").max(128, "Contraseña incorrecta."),
 });
 
+// Confirmar con la contraseña actual (cambiarla o borrar la cuenta). Como en el ingreso,
+// no se aplica el mínimo de 8: solo se compara con el hash guardado.
+export const wrongPasswordMessage = "La contraseña actual no es correcta.";
+export const currentPasswordSchema = z
+  .string("Escribe tu contraseña actual.")
+  .min(1, "Escribe tu contraseña actual.")
+  .max(128, wrongPasswordMessage);
+
+export const changePasswordSchema = z.object({
+  currentPassword: currentPasswordSchema,
+  newPassword: passwordSchema,
+});
+
+export type ChangePasswordInput = z.input<typeof changePasswordSchema>;
+
+// Borrar la cuenta (RF22) se confirma con la contraseña actual.
+export const deleteAccountSchema = z.object({ currentPassword: currentPasswordSchema });
+export type DeleteAccountInput = z.input<typeof deleteAccountSchema>;
+
+// El nombre que queda en una cuenta borrada: sus citas pasadas se conservan sin sus datos.
+export const DELETED_CLIENT_NAME = "Clienta eliminada";
+
 export type RegisterInput = z.input<typeof registerSchema>;
 export type RegisterData = z.output<typeof registerSchema>;
 export type LoginInput = z.input<typeof loginSchema>;

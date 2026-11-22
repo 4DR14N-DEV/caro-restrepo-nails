@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { sessions, users } from "../db/schema.js";
 
@@ -65,4 +65,15 @@ export async function deleteExpiredSessions(db: Database, userId: string): Promi
   await db
     .delete(sessions)
     .where(sql`${sessions.userId} = ${userId} AND ${sessions.expiresAt} <= now()`);
+}
+
+// Cierra las demás sesiones de una usuaria y deja la de `token` (al cambiar la contraseña).
+export async function deleteOtherSessions(
+  db: Pick<Database, "delete">,
+  userId: string,
+  token: string,
+): Promise<void> {
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), ne(sessions.id, hashToken(token))));
 }
