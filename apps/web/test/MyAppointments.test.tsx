@@ -125,12 +125,13 @@ describe("MyAppointments", () => {
     expect(screen.getByText("Todavía no tienes citas pasadas.")).toBeTruthy();
   });
 
-  it("al final está Mi cuenta, con Cambiar contraseña", async () => {
+  it("al final está Mi cuenta, con Cambiar contraseña y Borrar mi cuenta", async () => {
     mockApi(signedIn({ upcoming: [], history: [] }));
     render(<MyAppointments />);
 
     const account = await screen.findByRole("region", { name: "Mi cuenta" });
     expect(within(account).getByRole("button", { name: "Cambiar contraseña" })).toBeTruthy();
+    expect(within(account).getByRole("button", { name: "Borrar mi cuenta" })).toBeTruthy();
   });
 
   it("si falla la carga, avisa y permite reintentar", async () => {

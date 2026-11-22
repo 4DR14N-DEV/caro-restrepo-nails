@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 async function openChange() {
-  render(<MyAccount />);
+  render(<MyAccount canDelete />);
   await userEvent.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
 }
 
@@ -47,7 +47,7 @@ async function fill(current: string, next: string, repeat = next) {
 describe("MyAccount: cambiar contraseña", () => {
   it("está en la sección Mi cuenta y el formulario se abre y se cierra", async () => {
     mockApi({});
-    render(<MyAccount />);
+    render(<MyAccount canDelete />);
     const section = screen.getByRole("region", { name: "Mi cuenta" });
     await userEvent.click(within(section).getByRole("button", { name: "Cambiar contraseña" }));
     expect(screen.getByLabelText("Contraseña actual")).toBeTruthy();
@@ -123,5 +123,73 @@ describe("MyAccount: cambiar contraseña", () => {
     await fill("clave-actual-1", "nueva-clave-2");
 
     await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/ingreso?next=%2Fmis-citas"));
+  });
+});
+
+describe("MyAccount: borrar mi cuenta", () => {
+  async function openDelete() {
+    render(<MyAccount canDelete />);
+    await userEvent.click(screen.getByRole("button", { name: "Borrar mi cuenta" }));
+  }
+
+  it("explica qué se borra y pide la contraseña; Cancelar vuelve sin borrar", async () => {
+    const sent = mockApi({});
+    await openDelete();
+
+    expect(
+      screen.getByText(
+        "Se borran tu nombre y tu celular, y se cancelan tus citas próximas. Tus citas pasadas quedan sin tus datos. Esto no se puede deshacer.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Tu contraseña")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByLabelText("Tu contraseña")).toBeNull();
+    expect(sent).toEqual([]);
+  });
+
+  it("con la contraseña borra la cuenta y vuelve al inicio con el aviso", async () => {
+    const sent = mockApi({ "POST /api/auth/account/delete": () => json(204, null) });
+    const replace = vi.spyOn(window.location, "replace").mockImplementation(() => {});
+    await openDelete();
+    await userEvent.type(screen.getByLabelText("Tu contraseña"), "clave-actual-1");
+    await userEvent.click(screen.getByRole("button", { name: "Borrar mi cuenta definitivamente" }));
+
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?cuenta=borrada"));
+    expect(sent).toEqual([
+      { route: "POST /api/auth/account/delete", body: { currentPassword: "clave-actual-1" } },
+    ]);
+  });
+
+  it("sin contraseña no envía nada", async () => {
+    const sent = mockApi({});
+    await openDelete();
+    await userEvent.click(screen.getByRole("button", { name: "Borrar mi cuenta definitivamente" }));
+
+    expect(screen.getByText("Escribe tu contraseña actual.")).toBeTruthy();
+    expect(sent).toEqual([]);
+  });
+
+  it("si la contraseña no es correcta, lo dice y no borra", async () => {
+    mockApi({
+      "POST /api/auth/account/delete": () =>
+        json(400, {
+          error: "wrong_password",
+          fields: { currentPassword: "La contraseña actual no es correcta." },
+        }),
+    });
+    const replace = vi.spyOn(window.location, "replace").mockImplementation(() => {});
+    await openDelete();
+    await userEvent.type(screen.getByLabelText("Tu contraseña"), "mala-clave");
+    await userEvent.click(screen.getByRole("button", { name: "Borrar mi cuenta definitivamente" }));
+
+    expect(await screen.findByText("La contraseña actual no es correcta.")).toBeTruthy();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("la cuenta de Caro no muestra Borrar mi cuenta", () => {
+    mockApi({});
+    render(<MyAccount canDelete={false} />);
+    expect(screen.getByRole("button", { name: "Cambiar contraseña" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Borrar mi cuenta" })).toBeNull();
   });
 });

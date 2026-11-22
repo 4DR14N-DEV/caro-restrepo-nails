@@ -12,7 +12,7 @@ const LOGIN_URL = `/ingreso?next=${encodeURIComponent("/mis-citas")}`;
 type Load =
   | { state: "loading" }
   | { state: "error"; message: string }
-  | { state: "ready"; appointments: Appointments; clientName: string };
+  | { state: "ready"; appointments: Appointments; clientName: string; isClient: boolean };
 
 const loadError = (error: string) =>
   error === "network"
@@ -35,7 +35,12 @@ export function MyAppointments() {
     }
     if (!me.ok) return setLoad({ state: "error", message: loadError(me.error) });
     if (!result.ok) return setLoad({ state: "error", message: loadError(result.error) });
-    setLoad({ state: "ready", appointments: result.data, clientName: me.data.user.name });
+    setLoad({
+      state: "ready",
+      appointments: result.data,
+      clientName: me.data.user.name,
+      isClient: me.data.user.role === "client",
+    });
   }, []);
 
   useEffect(() => {
@@ -136,7 +141,7 @@ export function MyAppointments() {
         )}
       </section>
 
-      <MyAccount />
+      <MyAccount canDelete={load.isClient} />
     </div>
   );
 }

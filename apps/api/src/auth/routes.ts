@@ -1,5 +1,6 @@
 import {
   changePasswordSchema,
+  deleteAccountSchema,
   loginSchema,
   registerSchema,
   wrongPasswordMessage,
@@ -12,6 +13,7 @@ import { users } from "../db/schema.js";
 import { invalidInput } from "../http.js";
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from "./cookies.js";
 import { checkCurrentPassword } from "./current-password.js";
+import { deleteClientAccount } from "./delete-account.js";
 import { hashPassword, verifyAgainstDummy, verifyPassword } from "./password.js";
 import {
   createSession,
@@ -54,7 +56,7 @@ function wrongPassword(res: Response): void {
 // Devuelve la IP de la clienta, o undefined si la plataforma no la informa.
 export type ClientIp = (req: Request) => string | undefined;
 
-export function authRouter(db: Database, clientIp: ClientIp): Router {
+export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): Router {
   const router = Router();
 
   router.post("/register", async (req, res) => {
@@ -211,6 +213,26 @@ export function authRouter(db: Database, clientIp: ClientIp): Router {
         .where(eq(users.id, user.id));
       await deleteOtherSessions(tx, user.id, token);
     });
+    res.status(204).end();
+  });
+
+  // Borrar la cuenta (RF22), confirmando con la contraseña. La cuenta de Caro no se borra.
+  router.post("/account/delete", async (req, res) => {
+    const user = await currentUser(db, req, res);
+    if (!user) return;
+    if (user.role !== "client") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const parsed = deleteAccountSchema.safeParse(req.body);
+    if (!parsed.success) return invalidInput(res, parsed.error);
+
+    const check = await checkCurrentPassword(db, user, parsed.data.currentPassword);
+    if (typeof check === "number") return tooManyAttempts(res, check);
+    if (check === "wrong") return wrongPassword(res);
+
+    await deleteClientAccount(db, user, now());
+    clearSessionCookie(res);
     res.status(204).end();
   });
 

@@ -1,4 +1,4 @@
-import { changePasswordSchema } from "@caro/shared";
+import { changePasswordSchema, deleteAccountSchema } from "@caro/shared";
 import { useState, type SubmitEvent } from "react";
 import { api, formErrorMessage } from "../lib/api";
 import { TextField } from "./TextField";
@@ -101,10 +101,80 @@ function ChangePasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel
   );
 }
 
-// Mi cuenta, al final de Mis citas: cambiar la contraseña.
-export function MyAccount() {
+// Borrar la cuenta (RF22), confirmando con la contraseña en la misma página.
+function DeleteAccountForm({ onCancel }: { onCancel: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [error, setError] = useState<string>();
+  const [problem, setProblem] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  async function remove(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProblem(undefined);
+    const parsed = deleteAccountSchema.safeParse({ currentPassword });
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message);
+    setError(undefined);
+
+    setBusy(true);
+    const result = await api.deleteAccount(parsed.data);
+    setBusy(false);
+    // Ya no hay sesión: al inicio, con el aviso.
+    if (result.ok) return window.location.replace("/?cuenta=borrada");
+    if (result.status === 401) return window.location.replace(LOGIN_URL);
+    if (result.fields?.currentPassword) return setError(result.fields.currentPassword);
+    setProblem(formErrorMessage(result));
+  }
+
+  return (
+    <form
+      onSubmit={(event) => void remove(event)}
+      noValidate
+      className="flex flex-col gap-4 rounded-xl border border-red-200 bg-red-50 p-4"
+    >
+      <p className="text-sm text-red-900">
+        Se borran tu nombre y tu celular, y se cancelan tus citas próximas. Tus citas pasadas quedan
+        sin tus datos. Esto no se puede deshacer.
+      </p>
+      <TextField
+        label="Tu contraseña"
+        type="password"
+        autoComplete="current-password"
+        value={currentPassword}
+        onChange={(event) => setCurrentPassword(event.target.value)}
+        error={error}
+      />
+      {problem && (
+        <p role="alert" className="text-sm text-red-700">
+          {problem}
+        </p>
+      )}
+      <div className="flex flex-col gap-3">
+        <button
+          type="submit"
+          disabled={busy}
+          className="h-12 rounded-xl bg-red-700 px-4 text-base font-medium text-white disabled:opacity-60"
+        >
+          {busy ? "Borrando…" : "Borrar mi cuenta definitivamente"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="h-12 rounded-xl border border-neutral-300 bg-white px-4 text-base font-medium"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Mi cuenta, al final de Mis citas: cambiar la contraseña y, para las clientas, borrar la
+// cuenta (la de Caro no se borra).
+export function MyAccount({ canDelete }: { canDelete: boolean }) {
   const [changing, setChanging] = useState(false);
   const [changed, setChanged] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   return (
     <section aria-labelledby="mi-cuenta" className="flex flex-col gap-3">
@@ -136,6 +206,18 @@ export function MyAccount() {
           Cambiar contraseña
         </button>
       )}
+      {canDelete &&
+        (deleting ? (
+          <DeleteAccountForm onCancel={() => setDeleting(false)} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDeleting(true)}
+            className="h-12 rounded-xl border border-red-300 px-6 text-base font-medium text-red-700"
+          >
+            Borrar mi cuenta
+          </button>
+        ))}
     </section>
   );
 }

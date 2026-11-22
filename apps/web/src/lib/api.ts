@@ -7,6 +7,7 @@ import type {
   ChangePasswordInput,
   ClientRow,
   ClientSummary,
+  DeleteAccountInput,
   ExceptionRequest,
   ExceptionResult,
   MarkedStatus,
@@ -71,6 +72,7 @@ export const api = {
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
   changePassword: (body: ChangePasswordInput) => call<null>("POST", "/api/auth/password", body),
+  deleteAccount: (body: DeleteAccountInput) => call<null>("POST", "/api/auth/account/delete", body),
   services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
   adminServices: () => call<{ services: AdminService[] }>("GET", "/api/admin/services"),
   createService: (body: ServiceData) =>

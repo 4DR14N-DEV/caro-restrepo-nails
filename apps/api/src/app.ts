@@ -38,7 +38,7 @@ export function createApp({
     res.json({ status: "ok" });
   });
 
-  app.use("/api/auth", authRouter(db, clientIp));
+  app.use("/api/auth", authRouter(db, clientIp, now));
   app.use("/api/services", servicesRouter(db));
   app.use("/api/admin/services", adminServicesRouter(db));
   app.use("/api/admin/agenda", adminAgendaRouter(db, now));

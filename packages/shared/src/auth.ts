@@ -54,6 +54,13 @@ export const changePasswordSchema = z.object({
 
 export type ChangePasswordInput = z.input<typeof changePasswordSchema>;
 
+// Borrar la cuenta (RF22) se confirma con la contraseña actual.
+export const deleteAccountSchema = z.object({ currentPassword: currentPasswordSchema });
+export type DeleteAccountInput = z.input<typeof deleteAccountSchema>;
+
+// El nombre que queda en una cuenta borrada: sus citas pasadas se conservan sin sus datos.
+export const DELETED_CLIENT_NAME = "Clienta eliminada";
+
 export type RegisterInput = z.input<typeof registerSchema>;
 export type RegisterData = z.output<typeof registerSchema>;
 export type LoginInput = z.input<typeof loginSchema>;

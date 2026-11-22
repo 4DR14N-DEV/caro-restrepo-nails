@@ -36,6 +36,23 @@ describe("AuthStatus", () => {
     expect(screen.getByRole("link", { name: "Ingresar" })).toBeTruthy();
   });
 
+  it("después de borrar la cuenta avisa que se borró", async () => {
+    window.history.replaceState(null, "", "/?cuenta=borrada");
+    mockApi({ me: json(401, { error: "unauthorized" }) });
+    render(<AuthStatus />);
+
+    expect((await screen.findByRole("status")).textContent).toBe("Tu cuenta fue borrada.");
+    expect(screen.getByRole("link", { name: "Crear cuenta" })).toBeTruthy();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("sin ese aviso en la dirección no dice nada de borrar", async () => {
+    mockApi({ me: json(401, { error: "unauthorized" }) });
+    render(<AuthStatus />);
+    await screen.findByRole("link", { name: "Crear cuenta" });
+    expect(screen.queryByText("Tu cuenta fue borrada.")).toBeNull();
+  });
+
   it("con sesión saluda y, al salir bien, vuelve a mostrar los enlaces", async () => {
     const fetchMock = mockApi({ me: json(200, { user: ana }) });
     render(<AuthStatus />);
