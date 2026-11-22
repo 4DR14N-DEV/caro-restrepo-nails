@@ -65,13 +65,11 @@ describe("GET /api/admin/clients/list", () => {
       .update(users)
       .set({ createdAt: new Date("2026-10-05T17:00:00Z") })
       .where(eq(users.id, ana.userId));
-    await database.db
-      .insert(users)
-      .values({
-        name: "Clienta eliminada",
-        consentAcceptedAt: new Date(),
-        anonymizedAt: new Date(),
-      });
+    await database.db.insert(users).values({
+      name: "Clienta eliminada",
+      consentAcceptedAt: new Date(),
+      anonymizedAt: new Date(),
+    });
     // Ana: dos próximas (una cuenta), una cancelada y una pasada no cuentan.
     await appointment(ana.userId, "2026-11-25T15:00:00Z", ["Semipermanente manos"]);
     await appointment(ana.userId, "2026-11-26T15:00:00Z", ["Semipermanente manos"]);

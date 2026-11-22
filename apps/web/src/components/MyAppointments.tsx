@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { AppointmentActions } from "./AppointmentActions";
 import { AppointmentCard } from "./AppointmentCard";
 import { ChangeDone, type Change } from "./ChangeDone";
+import { MyAccount } from "./MyAccount";
 
 // Sin sesión se ingresa primero y después se vuelve aquí.
 const LOGIN_URL = `/ingreso?next=${encodeURIComponent("/mis-citas")}`;
@@ -134,6 +135,8 @@ export function MyAppointments() {
           </ul>
         )}
       </section>
+
+      <MyAccount />
     </div>
   );
 }

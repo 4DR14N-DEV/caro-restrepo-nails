@@ -4,6 +4,7 @@ import type {
   Agenda,
   AgendaChange,
   AppointmentChange,
+  ChangePasswordInput,
   ClientRow,
   ClientSummary,
   ExceptionRequest,
@@ -69,6 +70,7 @@ export const api = {
   login: (body: unknown) => call<{ user: PublicUser }>("POST", "/api/auth/login", body),
   logout: () => call<null>("POST", "/api/auth/logout"),
   me: () => call<{ user: PublicUser }>("GET", "/api/auth/me"),
+  changePassword: (body: ChangePasswordInput) => call<null>("POST", "/api/auth/password", body),
   services: () => call<{ services: PublicService[] }>("GET", "/api/services"),
   adminServices: () => call<{ services: AdminService[] }>("GET", "/api/admin/services"),
   createService: (body: ServiceData) =>
