@@ -25,7 +25,7 @@ interface Props {
   onEdit?: () => void;
 }
 
-const button = "h-11 flex-1 rounded-xl border border-neutral-300 px-3 text-sm font-medium";
+const button = "h-11 flex-1 rounded-xl border border-line px-3 text-sm font-medium text-ink";
 
 // Una cita de la agenda de Caro, con lo que puede hacer con ella: marcarla (si ya empezó),
 // cancelarla (si está agendada) y recordársela a la clienta por WhatsApp.
@@ -42,10 +42,10 @@ export function AgendaCard({ appointment, onMark, onEdit }: Props) {
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-xl border border-neutral-300 p-4">
+    <li className="flex flex-col gap-2 rounded-xl border border-line p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium">{formatTime(appointment.time)}</p>
-        <span className="shrink-0 rounded-full border border-neutral-300 px-2 py-0.5 text-sm">
+        <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-sm">
           {STATUS_LABELS[status]}
         </span>
       </div>
@@ -60,20 +60,20 @@ export function AgendaCard({ appointment, onMark, onEdit }: Props) {
           </>
         )}
       </p>
-      <p className="text-neutral-700">{appointment.services.join(", ")}</p>
-      <p className="text-sm text-neutral-600">
+      <p className="text-muted">{appointment.services.join(", ")}</p>
+      <p className="text-sm text-muted">
         {formatDuration(appointment.durationMinutes)} · {formatPrice(appointment.totalPriceCop)}
       </p>
 
       {confirming ? (
-        <div className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
+        <div className="flex flex-col gap-2 border-t border-line-soft pt-3">
           <p className="font-medium">¿Seguro que quieres cancelar esta cita?</p>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={busy}
               onClick={() => void mark("cancelled")}
-              className="h-11 flex-1 rounded-xl bg-neutral-900 px-3 text-sm font-medium text-white disabled:opacity-60"
+              className="h-11 flex-1 rounded-xl bg-primary hover:bg-primary-hover px-3 text-sm font-medium text-on-primary disabled:opacity-60"
             >
               {busy ? "Cancelando…" : "Sí, cancelar"}
             </button>
@@ -84,7 +84,7 @@ export function AgendaCard({ appointment, onMark, onEdit }: Props) {
         </div>
       ) : (
         (appointment.canMark || appointment.canCancel) && (
-          <div className="flex gap-2 border-t border-neutral-200 pt-3">
+          <div className="flex gap-2 border-t border-line-soft pt-3">
             {appointment.canMark && (
               <>
                 <button

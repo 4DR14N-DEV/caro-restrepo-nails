@@ -13,7 +13,7 @@ type Load =
 // Qué formulario está abierto: ninguno, uno para crear o uno para editar un servicio.
 type Editing = null | "new" | string;
 
-const buttonClass = "h-12 rounded-xl border border-neutral-300 px-4 text-base font-medium";
+const buttonClass = "h-12 rounded-xl border border-line px-4 text-base font-medium text-ink";
 
 // Panel de Caro: ver, crear, editar, activar y desactivar servicios.
 export function AdminServices() {
@@ -78,7 +78,7 @@ export function AdminServices() {
     };
   }
 
-  if (load.state === "loading") return <p className="text-neutral-600">Cargando servicios…</p>;
+  if (load.state === "loading") return <p className="text-muted">Cargando servicios…</p>;
 
   if (load.state === "signed-out") {
     return (
@@ -86,7 +86,7 @@ export function AdminServices() {
         <p>Ingresa con la cuenta de Caro para administrar los servicios.</p>
         <a
           href="/ingreso"
-          className="flex h-12 items-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Ingresar
         </a>
@@ -99,7 +99,7 @@ export function AdminServices() {
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button type="button" onClick={() => void fetchServices()} className={buttonClass}>
@@ -123,14 +123,14 @@ export function AdminServices() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="h-12 rounded-xl bg-neutral-900 text-base font-medium text-white"
+          className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary"
         >
           Agregar servicio
         </button>
       )}
 
       {toggleError && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
           {toggleError}
         </p>
       )}
@@ -149,8 +149,8 @@ export function AdminServices() {
           ) : (
             <li
               key={service.id}
-              className={`flex flex-col gap-3 rounded-xl border border-neutral-300 px-4 py-3 ${
-                service.active ? "" : "bg-neutral-50 text-neutral-500"
+              className={`flex flex-col gap-3 rounded-xl border border-line px-4 py-3 ${
+                service.active ? "" : "bg-surface-alt text-muted"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -161,7 +161,7 @@ export function AdminServices() {
                   </span>
                 </div>
                 {!service.active && (
-                  <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700">
+                  <span className="rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-muted">
                     Inactivo
                   </span>
                 )}

@@ -26,7 +26,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const input = "h-11 rounded-xl border border-neutral-300 px-3 text-base";
+const input = "h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface";
 
 // Crear o editar una cita a nombre de una clienta (RF11): clienta, servicios, día y hora.
 export function AppointmentForm({ date, today, appointment, onSaved, onCancel }: Props) {
@@ -95,7 +95,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
     <form
       aria-label="Cita"
       onSubmit={(event) => void save(event)}
-      className="flex flex-col gap-4 rounded-xl border border-neutral-900 p-4"
+      className="flex flex-col gap-4 rounded-xl border border-accent p-4"
     >
       <h3 className="font-medium">{appointment ? "Editar cita" : "Nueva cita"}</h3>
 
@@ -108,7 +108,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
           <button
             type="button"
             onClick={() => setClient(undefined)}
-            className="h-9 rounded-lg border border-neutral-300 px-3 text-sm"
+            className="h-9 rounded-lg border border-line px-3 text-sm"
           >
             Cambiar
           </button>
@@ -134,7 +134,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
                       setClient(found);
                       setQuery("");
                     }}
-                    className="h-10 w-full rounded-lg border border-neutral-300 px-3 text-left text-sm"
+                    className="h-10 w-full rounded-lg border border-line px-3 text-left text-sm"
                   >
                     {found.name} · {found.phone}
                   </button>
@@ -171,7 +171,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
       </div>
 
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {problem}
         </p>
       )}
@@ -179,14 +179,14 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
         <button
           type="submit"
           disabled={busy}
-          className="h-11 flex-1 rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+          className="h-11 flex-1 rounded-xl bg-primary hover:bg-primary-hover px-4 text-sm font-medium text-on-primary disabled:opacity-60"
         >
           {busy ? "Guardando…" : "Guardar"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="h-11 flex-1 rounded-xl border border-neutral-300 px-4 text-sm font-medium"
+          className="h-11 flex-1 rounded-xl border border-line px-4 text-sm font-medium text-ink"
         >
           Cancelar
         </button>

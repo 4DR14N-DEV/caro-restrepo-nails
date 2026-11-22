@@ -63,7 +63,7 @@ function step(view: View, anchor: string, direction: 1 | -1): string {
   return shiftMonth(anchor, direction);
 }
 
-const button = "h-11 rounded-xl border border-neutral-300 px-3 text-sm font-medium";
+const button = "h-11 rounded-xl border border-line px-3 text-sm font-medium text-ink";
 
 interface Props {
   // Hoy en Bogotá. Se puede fijar para los tests.
@@ -163,7 +163,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         <p>Ingresa con la cuenta de Caro para ver la agenda.</p>
         <a
           href={LOGIN_URL}
-          className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Ingresar
         </a>
@@ -183,7 +183,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
             type="button"
             aria-pressed={view === option.value}
             onClick={() => go(option.value, anchor)}
-            className={`${button} flex-1 ${view === option.value ? "border-neutral-900 bg-neutral-900 text-white" : ""}`}
+            className={`${button} flex-1 ${view === option.value ? "border-primary bg-primary text-on-primary" : ""}`}
           >
             {option.label}
           </button>
@@ -210,20 +210,20 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
             setLoad({ state: "loading" });
             setWithCancelled(event.target.checked);
           }}
-          className="size-5 accent-neutral-900"
+          className="size-5 accent-accent"
         />
         Mostrar canceladas
       </label>
 
       {saved && (
-        <div role="status" className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
+        <div role="status" className="flex flex-col gap-3 rounded-xl border border-line p-4">
           <p className="font-medium">Cita guardada.</p>
           {saved.appointment.client.phone && (
             <a
               href={whatsappLink(saved.appointment.client.phone, saved.message)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+              className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
             >
               Avisar a {saved.appointment.client.name} por WhatsApp
             </a>
@@ -231,7 +231,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         </div>
       )}
       {cancelled && (
-        <div role="status" className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
+        <div role="status" className="flex flex-col gap-3 rounded-xl border border-line p-4">
           <p className="font-medium">Cita cancelada.</p>
           {cancelled.client.phone && (
             <a
@@ -241,7 +241,7 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+              className="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
             >
               Avisar a {cancelled.client.name} por WhatsApp
             </a>
@@ -249,15 +249,15 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
         </div>
       )}
       {notice && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {notice}
         </p>
       )}
 
-      {load.state === "loading" && <p className="text-neutral-600">Cargando la agenda…</p>}
+      {load.state === "loading" && <p className="text-muted">Cargando la agenda…</p>}
       {load.state === "error" && (
         <div className="flex flex-col items-start gap-3">
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="text-danger">
             {load.message}
           </p>
           <button type="button" onClick={() => setReload((count) => count + 1)} className={button}>
@@ -350,19 +350,19 @@ function DayView({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">{formatDay(date)}</h2>
+      <h2 className="text-2xl">{formatDay(date)}</h2>
       {form ??
         (onNew && (
           <button
             type="button"
             onClick={onNew}
-            className="h-12 rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+            className="h-12 rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
           >
             Nueva cita
           </button>
         ))}
       {appointments.length === 0 ? (
-        <p className="text-neutral-600">No hay citas este día.</p>
+        <p className="text-muted">No hay citas este día.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {appointments.map((appointment) => (
@@ -400,14 +400,14 @@ function WeekView({
   const days = weekDays(anchor);
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold">Semana del {formatDay(days[0] ?? anchor)}</h2>
+      <h2 className="text-2xl">Semana del {formatDay(days[0] ?? anchor)}</h2>
       {days.map((date) => {
         const ofDay = appointments.filter((appointment) => appointment.date === date);
         return (
           <section
             key={date}
             aria-labelledby={`dia-${date}`}
-            className="flex flex-col gap-2 rounded-xl border border-neutral-300 p-4"
+            className="flex flex-col gap-2 rounded-xl border border-line p-4"
           >
             <div className="flex items-center justify-between gap-3">
               <h3 id={`dia-${date}`} className="font-medium">
@@ -420,13 +420,13 @@ function WeekView({
             {exceptions
               .filter((exception) => exception.date === date)
               .map((exception) => (
-                <p key={exception.id} className="text-sm text-neutral-600">
+                <p key={exception.id} className="text-sm text-muted">
                   {describeException(exception)}
                   {exception.reason && ` · ${exception.reason}`}
                 </p>
               ))}
             {ofDay.length === 0 ? (
-              <p className="text-sm text-neutral-600">Sin citas</p>
+              <p className="text-sm text-muted">Sin citas</p>
             ) : (
               <ul className="flex flex-col gap-1 text-sm">
                 {ofDay.map((appointment) => (
@@ -467,10 +467,10 @@ function MonthView({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">{formatMonth(anchor)}</h2>
+      <h2 className="text-2xl">{formatMonth(anchor)}</h2>
       <div className="grid grid-cols-7 gap-1 text-center text-sm">
         {WEEKDAY_INITIALS.map((initial, index) => (
-          <span key={index} aria-hidden="true" className="text-neutral-600">
+          <span key={index} aria-hidden="true" className="text-muted">
             {initial}
           </span>
         ))}
@@ -488,14 +488,12 @@ function MonthView({
                 aria-label={`${formatDay(date)}: ${count} ${count === 1 ? "cita" : "citas"}${blocked ? ", bloqueado" : ""}`}
                 onClick={() => onOpen(date)}
                 className={`flex h-14 flex-col items-center justify-center rounded-lg border ${
-                  date.startsWith(month)
-                    ? "border-neutral-300"
-                    : "border-transparent text-neutral-400"
+                  date.startsWith(month) ? "border-line" : "border-transparent text-muted/60"
                 }`}
               >
                 <span>{Number(date.slice(8))}</span>
                 {count > 0 && <span className="text-xs font-medium">{count}</span>}
-                {blocked && <span className="text-[10px] text-neutral-600">Bloqueado</span>}
+                {blocked && <span className="text-[10px] text-muted">Bloqueado</span>}
               </button>
             );
           })}
