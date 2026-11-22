@@ -13,6 +13,9 @@ import type {
   MyAppointments,
   PublicService,
   PublicUser,
+  ScheduleSaved,
+  ScheduleSettings,
+  ScheduleSettingsRequest,
   ServiceData,
   ServiceUpdate,
 } from "@caro/shared";
@@ -29,7 +32,7 @@ export type ApiResult<T> =
     };
 
 async function call<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
@@ -89,6 +92,9 @@ export const api = {
     call<AgendaChange>("POST", "/api/admin/appointments", body),
   updateAppointment: (id: string, body: AdminAppointmentRequest) =>
     call<AgendaChange>("PATCH", `/api/admin/appointments/${encodeURIComponent(id)}`, body),
+  schedule: () => call<ScheduleSettings>("GET", "/api/admin/schedule"),
+  saveSchedule: (body: ScheduleSettingsRequest) =>
+    call<ScheduleSaved>("PUT", "/api/admin/schedule", body),
   addException: (body: ExceptionRequest) =>
     call<ExceptionResult>("POST", "/api/admin/exceptions", body),
   removeException: (id: string) =>

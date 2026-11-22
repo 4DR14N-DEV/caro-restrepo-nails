@@ -54,6 +54,14 @@ export function AuthStatus() {
             Ver agenda
           </a>
         )}
+        {user.role === "admin" && (
+          <a
+            href="/admin/horario"
+            className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          >
+            Horario y reglas
+          </a>
+        )}
         <button
           type="button"
           onClick={logout}
