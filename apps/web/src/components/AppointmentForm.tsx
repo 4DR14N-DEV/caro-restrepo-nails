@@ -108,7 +108,7 @@ export function AppointmentForm({ date, today, appointment, onSaved, onCancel }:
           <button
             type="button"
             onClick={() => setClient(undefined)}
-            className="h-9 rounded-lg border border-line px-3 text-sm"
+            className="h-11 rounded-xl border border-line px-4 text-sm text-ink"
           >
             Cambiar
           </button>

@@ -32,3 +32,22 @@ describe("RegisterForm: a dónde vuelve", () => {
     expect(assign).toHaveBeenCalledWith("/reservar");
   });
 });
+
+describe("RegisterForm: aceptar la política", () => {
+  it("sin aceptar, el aviso queda asociado a la casilla para los lectores de pantalla", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    render(<RegisterForm />);
+
+    await userEvent.type(screen.getByLabelText("Nombre"), "Ana María");
+    await userEvent.type(screen.getByLabelText("Celular"), "3001234567");
+    await userEvent.type(screen.getByLabelText("Contraseña"), "clave-segura");
+    await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
+
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox.getAttribute("aria-invalid")).toBe("true");
+    const describedBy = checkbox.getAttribute("aria-describedby");
+    expect(describedBy && document.getElementById(describedBy)?.textContent).toBe(
+      "Debes aceptar la política de tratamiento de datos.",
+    );
+  });
+});

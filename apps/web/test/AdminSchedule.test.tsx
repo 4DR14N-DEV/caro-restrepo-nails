@@ -223,6 +223,11 @@ describe("AdminSchedule: horario y reglas", () => {
       day("Martes").getByText("La hora de cierre tiene que ser después de la de apertura."),
     ).toBeTruthy();
     expect(screen.getByText("El margen va de 0 a 60 minutos, en pasos de 5.")).toBeTruthy();
+    // Los lectores de pantalla los anuncian, no solo se ven.
+    expect(screen.getAllByRole("alert").map((alert) => alert.textContent)).toEqual([
+      "La hora de cierre tiene que ser después de la de apertura.",
+      "El margen va de 0 a 60 minutos, en pasos de 5.",
+    ]);
     expect(sent.map((s) => s.route)).toEqual(["GET /api/admin/schedule"]);
   });
 

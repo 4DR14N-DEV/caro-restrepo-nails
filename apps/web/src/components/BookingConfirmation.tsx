@@ -52,7 +52,10 @@ export function BookingConfirmation({ result, clientName }: Props) {
       >
         Ver mis citas
       </a>
-      <a href="/" className="text-center text-sm text-muted underline">
+      <a
+        href="/"
+        className="flex min-h-11 items-center justify-center text-sm text-muted underline"
+      >
         Volver al inicio
       </a>
     </section>

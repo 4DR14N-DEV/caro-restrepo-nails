@@ -71,6 +71,7 @@ const toRules = (texts: RuleTexts): BookingRules =>
   ) as unknown as BookingRules;
 
 const select = "h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface";
+// Errores junto al campo: se anuncian a los lectores de pantalla al aparecer.
 const fieldError = "text-sm text-danger";
 
 // Panel de Caro: horario base de lunes a sábado, margen entre citas y reglas de reserva (RF15).
@@ -252,12 +253,18 @@ export function AdminSchedule() {
                 <p className="text-sm text-muted">Cerrado</p>
               )}
               {(errorOf("opensAt") ?? errorOf("closesAt")) && (
-                <p className={fieldError}>{errorOf("opensAt") ?? errorOf("closesAt")}</p>
+                <p role="alert" className={fieldError}>
+                  {errorOf("opensAt") ?? errorOf("closesAt")}
+                </p>
               )}
             </fieldset>
           );
         })}
-        {errors.hours && <p className={fieldError}>{errors.hours}</p>}
+        {errors.hours && (
+          <p role="alert" className={fieldError}>
+            {errors.hours}
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="reglas" className="flex flex-col gap-3">
@@ -281,7 +288,9 @@ export function AdminSchedule() {
                 className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
               />
               {errors[`rules.${key}`] && (
-                <span className={fieldError}>{errors[`rules.${key}`]}</span>
+                <span role="alert" className={fieldError}>
+                  {errors[`rules.${key}`]}
+                </span>
               )}
             </label>
           ))}

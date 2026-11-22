@@ -181,7 +181,10 @@ export function AdminClients() {
               className="flex flex-col gap-2 rounded-xl border border-line px-4 py-3"
             >
               <p className="font-medium">{client.name}</p>
-              <a href={`tel:${client.phone}`} className="text-sm underline">
+              <a
+                href={`tel:${client.phone}`}
+                className="inline-flex min-h-11 items-center self-start text-sm underline"
+              >
                 {client.phone}
               </a>
               <span className="text-sm text-muted">
