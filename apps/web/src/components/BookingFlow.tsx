@@ -163,19 +163,19 @@ export function BookingFlow() {
   }
 
   if (load.state === "loading") {
-    return <p className="text-neutral-600">Cargando la agenda…</p>;
+    return <p className="text-muted">Cargando la agenda…</p>;
   }
 
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button
           type="button"
           onClick={() => void fetchAll()}
-          className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Reintentar
         </button>
@@ -190,9 +190,9 @@ export function BookingFlow() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">1. Elige los servicios</h2>
+        <h2 className="text-2xl">1. Elige los servicios</h2>
         {notice?.at === "services" && (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="text-danger">
             {notice.text}
           </p>
         )}
@@ -201,9 +201,9 @@ export function BookingFlow() {
 
       {chosen.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">2. Elige el día</h2>
+          <h2 className="text-2xl">2. Elige el día</h2>
           {load.days.length === 0 ? (
-            <p className="text-neutral-600">No hay días disponibles por ahora.</p>
+            <p className="text-muted">No hay días disponibles por ahora.</p>
           ) : (
             <ChoiceGrid
               label="Días"
@@ -217,9 +217,9 @@ export function BookingFlow() {
 
       {chosen.length > 0 && date && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">3. Elige la hora</h2>
+          <h2 className="text-2xl">3. Elige la hora</h2>
           {notice?.at === "times" && (
-            <p role="alert" className="text-red-700">
+            <p role="alert" className="text-danger">
               {notice.text}
               {notice.checkMine && (
                 <>
@@ -231,16 +231,16 @@ export function BookingFlow() {
               )}
             </p>
           )}
-          {times.state === "loading" && <p className="text-neutral-600">Buscando horas…</p>}
+          {times.state === "loading" && <p className="text-muted">Buscando horas…</p>}
           {times.state === "error" && (
             <div className="flex flex-col items-start gap-3">
-              <p role="alert" className="text-red-700">
+              <p role="alert" className="text-danger">
                 {times.message}
               </p>
               <button
                 type="button"
                 onClick={() => setTimesRequest((count) => count + 1)}
-                className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+                className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
               >
                 Reintentar
               </button>
@@ -248,7 +248,7 @@ export function BookingFlow() {
           )}
           {times.state === "ready" &&
             (times.times.length === 0 ? (
-              <p className="text-neutral-600">No quedan horas libres este día. Prueba con otro.</p>
+              <p className="text-muted">No quedan horas libres este día. Prueba con otro.</p>
             ) : (
               <ChoiceGrid
                 label="Horas"
@@ -264,14 +264,14 @@ export function BookingFlow() {
       )}
 
       {chosen.length > 0 && date && time && (
-        <section className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4">
+        <section className="flex flex-col gap-3 rounded-xl border border-line p-4">
           <p className="font-medium">{formatWhen(date, time)}</p>
-          <p className="text-neutral-600">{selectionSummary(total)}</p>
+          <p className="text-muted">{selectionSummary(total)}</p>
           <button
             type="button"
             onClick={() => void confirm()}
             disabled={submitting}
-            className="h-12 rounded-xl bg-neutral-900 px-6 text-base font-medium text-white disabled:opacity-60"
+            className="h-12 rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary disabled:opacity-60"
           >
             {submitting ? "Confirmando…" : "Confirmar reserva"}
           </button>

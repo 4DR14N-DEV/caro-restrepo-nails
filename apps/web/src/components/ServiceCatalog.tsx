@@ -43,19 +43,19 @@ export function ServiceCatalog() {
   }
 
   if (load.state === "loading") {
-    return <p className="text-neutral-600">Cargando servicios…</p>;
+    return <p className="text-muted">Cargando servicios…</p>;
   }
 
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button
           type="button"
           onClick={() => void fetchServices()}
-          className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-6 text-base font-medium text-ink"
         >
           Reintentar
         </button>
@@ -64,7 +64,7 @@ export function ServiceCatalog() {
   }
 
   if (load.services.length === 0) {
-    return <p className="text-neutral-600">Pronto publicaremos los servicios.</p>;
+    return <p className="text-muted">Pronto publicaremos los servicios.</p>;
   }
 
   const chosen = summarize(load.services.filter((service) => selected.has(service.id)));
@@ -72,7 +72,7 @@ export function ServiceCatalog() {
   return (
     <>
       <ServicePicker services={load.services} selected={selected} onToggle={toggle} />
-      <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white px-4 py-4">
+      <div className="fixed inset-x-0 bottom-0 border-t border-line-soft bg-surface px-4 py-4">
         <p role="status" aria-live="polite" className="mx-auto max-w-md text-center font-medium">
           {chosen.count === 0
             ? "Elige uno o varios servicios para ver el total."

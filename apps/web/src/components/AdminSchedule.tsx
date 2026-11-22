@@ -70,8 +70,8 @@ const toRules = (texts: RuleTexts): BookingRules =>
     RULE_FIELDS.map(({ key }) => [key, texts[key].trim() === "" ? Number.NaN : Number(texts[key])]),
   ) as unknown as BookingRules;
 
-const select = "h-11 rounded-xl border border-neutral-300 px-3 text-base";
-const fieldError = "text-sm text-red-700";
+const select = "h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface";
+const fieldError = "text-sm text-danger";
 
 // Panel de Caro: horario base de lunes a sábado, margen entre citas y reglas de reserva (RF15).
 export function AdminSchedule() {
@@ -149,7 +149,7 @@ export function AdminSchedule() {
     }
   }
 
-  if (load.state === "loading") return <p className="text-neutral-600">Cargando el horario…</p>;
+  if (load.state === "loading") return <p className="text-muted">Cargando el horario…</p>;
 
   if (load.state === "signed-out") {
     return (
@@ -157,7 +157,7 @@ export function AdminSchedule() {
         <p>Ingresa con la cuenta de Caro para cambiar el horario.</p>
         <a
           href={LOGIN_URL}
-          className="flex h-12 items-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Ingresar
         </a>
@@ -170,13 +170,13 @@ export function AdminSchedule() {
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button
           type="button"
           onClick={() => void fetchSchedule()}
-          className="h-12 rounded-xl border border-neutral-300 px-4 text-base font-medium"
+          className="h-12 rounded-xl border border-line px-4 text-base font-medium text-ink"
         >
           Reintentar
         </button>
@@ -187,10 +187,10 @@ export function AdminSchedule() {
   return (
     <form onSubmit={(event) => void save(event)} className="flex flex-col gap-6" noValidate>
       <section aria-labelledby="horario-base" className="flex flex-col gap-3">
-        <h2 id="horario-base" className="text-lg font-medium">
+        <h2 id="horario-base" className="text-2xl">
           Horario de la semana
         </h2>
-        <p className="text-sm text-neutral-600">Domingos y festivos no se atiende.</p>
+        <p className="text-sm text-muted">Domingos y festivos no se atiende.</p>
         {hours.map((day, index) => {
           const name = DAY_NAMES[day.weekday] ?? "";
           const open = day.opensAt !== null && day.closesAt !== null;
@@ -198,7 +198,7 @@ export function AdminSchedule() {
           return (
             <fieldset
               key={day.weekday}
-              className="flex flex-col gap-2 rounded-xl border border-neutral-300 p-4"
+              className="flex flex-col gap-2 rounded-xl border border-line p-4"
             >
               <legend className="px-1 font-medium">{name}</legend>
               <label className="flex items-center gap-2 text-sm">
@@ -249,7 +249,7 @@ export function AdminSchedule() {
                   </label>
                 </div>
               ) : (
-                <p className="text-sm text-neutral-600">Cerrado</p>
+                <p className="text-sm text-muted">Cerrado</p>
               )}
               {(errorOf("opensAt") ?? errorOf("closesAt")) && (
                 <p className={fieldError}>{errorOf("opensAt") ?? errorOf("closesAt")}</p>
@@ -261,10 +261,10 @@ export function AdminSchedule() {
       </section>
 
       <section aria-labelledby="reglas" className="flex flex-col gap-3">
-        <h2 id="reglas" className="text-lg font-medium">
+        <h2 id="reglas" className="text-2xl">
           Reglas
         </h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted">
           El margen nuevo vale para las citas que se reserven desde ahora.
         </p>
         {rules &&
@@ -278,7 +278,7 @@ export function AdminSchedule() {
                 step={step}
                 value={rules[key]}
                 onChange={(event) => setRules({ ...rules, [key]: event.target.value })}
-                className="h-11 rounded-xl border border-neutral-300 px-3 text-base"
+                className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
               />
               {errors[`rules.${key}`] && (
                 <span className={fieldError}>{errors[`rules.${key}`]}</span>
@@ -288,16 +288,19 @@ export function AdminSchedule() {
       </section>
 
       {problem && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
           {problem}
         </p>
       )}
       {saved && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm">
-          <p className="font-medium text-green-900">Horario guardado.</p>
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-xl bg-success-soft px-4 py-3 text-sm"
+        >
+          <p className="font-medium text-success">Horario guardado.</p>
           {saved.length > 0 && (
             <>
-              <p className="text-amber-900">{outsideHoursMessage(saved.length)}</p>
+              <p className="text-warning">{outsideHoursMessage(saved.length)}</p>
               <ul className="flex list-disc flex-col gap-1 pl-5">
                 {saved.map((appointment) => (
                   <li key={appointment.id}>
@@ -316,7 +319,7 @@ export function AdminSchedule() {
       <button
         type="submit"
         disabled={busy}
-        className="h-12 rounded-xl bg-neutral-900 text-base font-medium text-white disabled:opacity-60"
+        className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary disabled:opacity-60"
       >
         {busy ? "Guardando…" : "Guardar"}
       </button>

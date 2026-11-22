@@ -82,7 +82,7 @@ export function RegisterForm() {
             type="checkbox"
             name="consent"
             aria-invalid={fields.consent ? true : undefined}
-            className="mt-0.5 size-5 shrink-0 accent-neutral-900"
+            className="mt-0.5 size-5 shrink-0 accent-accent"
           />
           <span>
             Acepto la{" "}
@@ -92,7 +92,7 @@ export function RegisterForm() {
             .
           </span>
         </label>
-        {fields.consent && <p className="text-sm text-red-700">{fields.consent}</p>}
+        {fields.consent && <p className="text-sm text-danger">{fields.consent}</p>}
       </div>
     </FormShell>
   );

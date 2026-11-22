@@ -36,7 +36,7 @@ function problemOf(result: Extract<ApiResult<unknown>, { ok: false }>): string {
   return result.fields?.form ?? Object.values(result.fields ?? {})[0] ?? formErrorMessage(result);
 }
 
-const select = "h-11 rounded-xl border border-neutral-300 px-3 text-base";
+const select = "h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface";
 
 interface Props {
   date: string;
@@ -95,13 +95,13 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
   return (
     <section
       aria-labelledby="horario-del-dia"
-      className="flex flex-col gap-3 rounded-xl border border-neutral-300 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-line p-4"
     >
       <h3 id="horario-del-dia" className="font-medium">
         Horario del día
       </h3>
       {exceptions.length === 0 ? (
-        <p className="text-sm text-neutral-600">Sin bloqueos ni cambios de horario.</p>
+        <p className="text-sm text-muted">Sin bloqueos ni cambios de horario.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {exceptions.map((exception) => (
@@ -115,7 +115,7 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
                   type="button"
                   disabled={removing === exception.id}
                   onClick={() => void remove(exception.id)}
-                  className="h-9 rounded-lg border border-neutral-300 px-3 text-sm"
+                  className="h-9 rounded-lg border border-line px-3 text-sm"
                 >
                   Quitar
                 </button>
@@ -125,17 +125,17 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
         </ul>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {problem}
         </p>
       )}
 
       {past ? (
-        <p className="text-sm text-neutral-600">{pastDayMessage}</p>
+        <p className="text-sm text-muted">{pastDayMessage}</p>
       ) : (
         <form
           onSubmit={(event) => void save(event)}
-          className="flex flex-col gap-3 border-t border-neutral-200 pt-3"
+          className="flex flex-col gap-3 border-t border-line-soft pt-3"
         >
           <p className="text-sm font-medium">Agregar</p>
           <label className="flex flex-col gap-1 text-sm">
@@ -186,13 +186,13 @@ export function DaySchedule({ date, today, exceptions, onChanged }: Props) {
               value={reason}
               maxLength={100}
               onChange={(event) => setReason(event.target.value)}
-              className="h-11 rounded-xl border border-neutral-300 px-3 text-base"
+              className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
             />
           </label>
           <button
             type="submit"
             disabled={busy}
-            className="h-11 rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+            className="h-11 rounded-xl bg-primary hover:bg-primary-hover px-4 text-sm font-medium text-on-primary disabled:opacity-60"
           >
             {busy ? "Guardando…" : "Guardar"}
           </button>

@@ -17,7 +17,7 @@ type Load =
 
 const LOGIN_URL = `/ingreso?next=${encodeURIComponent("/admin/clientas")}`;
 
-const buttonClass = "h-11 rounded-xl border border-neutral-300 px-4 text-sm font-medium";
+const buttonClass = "h-11 rounded-xl border border-line px-4 text-sm font-medium text-ink";
 
 // Sin mayúsculas ni tildes: "María" se encuentra escribiendo "maria".
 const plain = (text: string) =>
@@ -92,7 +92,7 @@ export function AdminClients() {
     setProblem(formErrorMessage(result));
   }
 
-  if (load.state === "loading") return <p className="text-neutral-600">Cargando clientas…</p>;
+  if (load.state === "loading") return <p className="text-muted">Cargando clientas…</p>;
 
   if (load.state === "signed-out") {
     return (
@@ -100,7 +100,7 @@ export function AdminClients() {
         <p>Ingresa con la cuenta de Caro para ver las clientas.</p>
         <a
           href={LOGIN_URL}
-          className="flex h-12 items-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+          className="flex h-12 items-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
         >
           Ingresar
         </a>
@@ -113,7 +113,7 @@ export function AdminClients() {
   if (load.state === "error") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           {load.message}
         </p>
         <button type="button" onClick={() => void fetchClients()} className={buttonClass}>
@@ -124,7 +124,7 @@ export function AdminClients() {
   }
 
   if (load.clients.length === 0) {
-    return <p className="text-neutral-600">Todavía no hay clientas registradas.</p>;
+    return <p className="text-muted">Todavía no hay clientas registradas.</p>;
   }
 
   const shown = load.clients.filter((client) => matches(client, query));
@@ -137,23 +137,26 @@ export function AdminClients() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="h-11 rounded-xl border border-neutral-300 px-3 text-base"
+          className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
         />
       </label>
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-muted">
         {load.clients.length === 1 ? "1 clienta" : `${load.clients.length} clientas`}
       </p>
 
       {problem && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
           {problem}
         </p>
       )}
       {reset && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm">
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-xl bg-success-soft px-4 py-3 text-sm"
+        >
           <span>Contraseña nueva de {reset.client.name}:</span>
           <strong className="font-mono text-lg tracking-wider">{reset.password}</strong>
-          <span className="text-neutral-700">Solo se muestra esta vez.</span>
+          <span className="text-muted">Solo se muestra esta vez.</span>
           <a
             href={whatsappLink(
               reset.client.phone,
@@ -161,7 +164,7 @@ export function AdminClients() {
             )}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-11 items-center justify-center rounded-xl bg-green-700 px-4 font-medium text-white"
+            className="flex h-11 items-center justify-center rounded-xl bg-success px-4 font-medium text-on-success"
           >
             Enviar por WhatsApp
           </a>
@@ -169,19 +172,19 @@ export function AdminClients() {
       )}
 
       {shown.length === 0 ? (
-        <p className="text-neutral-600">No hay clientas con ese nombre o celular.</p>
+        <p className="text-muted">No hay clientas con ese nombre o celular.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((client) => (
             <li
               key={client.id}
-              className="flex flex-col gap-2 rounded-xl border border-neutral-300 px-4 py-3"
+              className="flex flex-col gap-2 rounded-xl border border-line px-4 py-3"
             >
               <p className="font-medium">{client.name}</p>
               <a href={`tel:${client.phone}`} className="text-sm underline">
                 {client.phone}
               </a>
-              <span className="text-sm text-neutral-600">
+              <span className="text-sm text-muted">
                 {`Registrada el ${formatDay(client.registeredOn)} de ${client.registeredOn.slice(0, 4)}`}
               </span>
               <span className="text-sm">{upcomingText(client.upcoming)}</span>
@@ -195,7 +198,7 @@ export function AdminClients() {
                       type="button"
                       disabled={busy}
                       onClick={() => void generate(client)}
-                      className="h-11 rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+                      className="h-11 rounded-xl bg-primary hover:bg-primary-hover px-4 text-sm font-medium text-on-primary disabled:opacity-60"
                     >
                       {busy ? "Generando…" : "Generar contraseña"}
                     </button>

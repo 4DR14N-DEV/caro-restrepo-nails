@@ -125,25 +125,25 @@ export function PushToggle({ browser = browserPush }: { browser?: PushBrowser })
   }
 
   return (
-    <section className="flex w-full flex-col items-center gap-3 rounded-xl border border-neutral-200 p-4">
+    <section className="flex w-full flex-col items-center gap-3 rounded-xl border border-line-soft p-4">
       <h2 className="font-medium">Avisos de citas</h2>
-      {state.kind === "loading" && <p className="text-sm text-neutral-600">Cargando…</p>}
-      {state.kind === "message" && <p className="text-sm text-neutral-600">{state.text}</p>}
+      {state.kind === "loading" && <p className="text-sm text-muted">Cargando…</p>}
+      {state.kind === "message" && <p className="text-sm text-muted">{state.text}</p>}
       {state.kind === "error" && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {state.text}
         </p>
       )}
       {state.kind === "off" && (
         <>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted">
             Recibe un aviso cuando una clienta reserva, cancela o reprograma.
           </p>
           <button
             type="button"
             disabled={busy}
             onClick={() => turnOn(state.publicKey)}
-            className="h-12 rounded-xl bg-neutral-900 px-6 text-base font-medium text-white disabled:opacity-50"
+            className="h-12 rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary disabled:opacity-50"
           >
             Activar avisos en este dispositivo
           </button>
@@ -151,19 +151,19 @@ export function PushToggle({ browser = browserPush }: { browser?: PushBrowser })
       )}
       {state.kind === "on" && (
         <>
-          <p className="text-sm text-neutral-600">Los avisos están activos en este dispositivo.</p>
+          <p className="text-sm text-muted">Los avisos están activos en este dispositivo.</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => turnOff(state.publicKey, state.endpoint)}
-            className="h-12 rounded-xl border border-neutral-300 px-6 text-base font-medium disabled:opacity-50"
+            className="h-12 rounded-xl border border-line px-6 text-base font-medium disabled:opacity-50 text-ink"
           >
             Desactivar avisos
           </button>
         </>
       )}
       {(state.kind === "off" || state.kind === "on") && state.error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       )}

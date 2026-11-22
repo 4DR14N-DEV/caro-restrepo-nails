@@ -1,0 +1,74 @@
+---
+import { HUMMINGBIRD_EYE, HUMMINGBIRD_PATHS, HUMMINGBIRD_VIEWBOX } from "../lib/hummingbird";
+import { LOGO_GLYPHS, LOGO_VIEWBOX } from "../lib/logo-paths";
+
+interface Props {
+  // "hero": letrero completo de la portada (nombre, colibrí, líneas y NAILS).
+  // "compact": solo el nombre, para el encabezado.
+  variant?: "hero" | "compact";
+  // Prefijo para los ids del degradé: dos letreros en la misma página no se pisan.
+  id?: string;
+  class?: string;
+}
+
+const { variant = "hero", id = "logo", class: className } = Astro.props;
+const gradient = `${id}-gradient`;
+---
+
+{
+  variant === "compact" ? (
+    <svg viewBox={LOGO_VIEWBOX} class={className} role="img" aria-label="Caro Restrepo">
+      <defs>
+        <linearGradient id={gradient} x1="0" x2="1" y1="0" y2="0.2">
+          <stop offset="0%" style="stop-color: var(--logo-1)" />
+          <stop offset="48%" style="stop-color: var(--logo-2)" />
+          <stop offset="100%" style="stop-color: var(--logo-3)" />
+        </linearGradient>
+      </defs>
+      {LOGO_GLYPHS.map((d) => (
+        <path d={d} fill={`url(#${gradient})`} />
+      ))}
+    </svg>
+  ) : (
+    <svg viewBox="0 0 600 215" class:list={["logo-hero", className]} role="img" aria-label="Caro Restrepo Nails">
+      <defs>
+        <linearGradient id={gradient} gradientUnits="userSpaceOnUse" x1="0" y1="40" x2="580" y2="140">
+          <stop offset="0%" style="stop-color: var(--logo-1)" />
+          <stop offset="48%" style="stop-color: var(--logo-2)" />
+          <stop offset="100%" style="stop-color: var(--logo-3)" />
+        </linearGradient>
+      </defs>
+      <g class="logo-name" transform="translate(14 -12)" style="filter: var(--logo-glow)">
+        {LOGO_GLYPHS.map((d) => (
+          <path class="logo-glyph" d={d} fill={`url(#${gradient})`} stroke="var(--champagne)" stroke-width="0" />
+        ))}
+      </g>
+      <g class="logo-nails">
+        <line class="logo-line logo-line-left" x1="232" y1="186" x2="92" y2="186" stroke="var(--champagne)" stroke-width="1.5" />
+        <line class="logo-line logo-line-right" x1="380" y1="186" x2="520" y2="186" stroke="var(--champagne)" stroke-width="1.5" />
+        <text
+          class="logo-word"
+          x="306"
+          y="197"
+          text-anchor="middle"
+          font-family="Jost Variable, Jost, sans-serif"
+          font-weight="300"
+          font-size="30"
+          letter-spacing="12"
+          fill="var(--champagne)"
+        >
+          NAILS
+        </text>
+      </g>
+      <g class="logo-bird">
+      <svg x="520" y="0" width="76" height="76" viewBox={HUMMINGBIRD_VIEWBOX} overflow="visible">
+        <g fill="none" stroke="var(--champagne)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d={HUMMINGBIRD_PATHS.body} />
+          <path class="logo-wing" d={HUMMINGBIRD_PATHS.wing} />
+        </g>
+        <circle cx={HUMMINGBIRD_EYE.cx} cy={HUMMINGBIRD_EYE.cy} r={HUMMINGBIRD_EYE.r} fill="var(--champagne)" />
+      </svg>
+      </g>
+    </svg>
+  )
+}

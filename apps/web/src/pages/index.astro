@@ -1,27 +1,47 @@
 ---
 import { AuthStatus } from "../components/AuthStatus";
+import Logotype from "../components/Logotype.astro";
+import { INTRO_CLASS, shouldPlayIntro } from "../lib/logo-intro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+// Se decide antes de pintar el letrero, para que no se vea armado y después se esconda. La
+// marca se quita a los 4 s por si GSAP no llega (red lenta): entonces el letrero queda armado.
+const introScript = `(${shouldPlayIntro.toString()})(window) && (document.documentElement.classList.add("${INTRO_CLASS}"), setTimeout(function () { document.documentElement.classList.remove("${INTRO_CLASS}"); }, 4000));`;
 ---
 
 <BaseLayout
+  brand={false}
   title="Caro Restrepo Nails"
   description="Spa de uñas de Caro Restrepo: semipermanente, acrílico, press on y más."
 >
   <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-12 text-center">
-    <h1 class="text-3xl font-semibold tracking-tight">Caro Restrepo Nails</h1>
-    <p class="text-neutral-600">Reserva tu cita en línea en pocos pasos.</p>
+    <script is:inline set:html={introScript} />
+    <h1 class="-mx-2"><Logotype class="w-full" /></h1>
+    <p class="text-muted">Reserva tu cita en línea en pocos pasos.</p>
     <a
       href="/reservar"
-      class="flex h-12 items-center justify-center rounded-xl bg-neutral-900 px-6 text-base font-medium text-white"
+      class="flex h-12 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-6 text-base font-medium text-on-primary"
     >
       Reservar cita
     </a>
     <a
       href="/servicios"
-      class="flex h-12 items-center justify-center rounded-xl border border-neutral-300 px-6 text-base font-medium"
+      class="flex h-12 items-center justify-center rounded-xl border border-line px-6 text-base font-medium text-ink"
     >
       Ver servicios y precios
     </a>
     <AuthStatus client:load />
   </main>
+  <script>
+    import { INTRO_CLASS, startLogoIntro } from "../lib/logo-intro";
+
+    // GSAP se descarga solo si hay animación: en las visitas siguientes no pesa nada.
+    if (document.documentElement.classList.contains(INTRO_CLASS)) {
+      const [{ gsap }, { DrawSVGPlugin }] = await Promise.all([
+        import("gsap"),
+        import("gsap/DrawSVGPlugin"),
+      ]);
+      gsap.registerPlugin(DrawSVGPlugin);
+      startLogoIntro(document.querySelector<SVGSVGElement>(".logo-hero"), document, window, gsap);
+    }
+  </script>
 </BaseLayout>

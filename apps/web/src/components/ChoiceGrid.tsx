@@ -19,7 +19,7 @@ export function ChoiceGrid({ label, options, selected, onSelect }: Props) {
             aria-pressed={active}
             onClick={() => onSelect(option.value)}
             className={`h-12 rounded-xl border text-base font-medium ${
-              active ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300"
+              active ? "border-primary bg-primary text-on-primary" : "border-line"
             }`}
           >
             {option.label}

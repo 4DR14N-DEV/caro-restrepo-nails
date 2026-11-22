@@ -1,1 +1,165 @@
 @import "tailwindcss";
+
+/* Fuentes alojadas en el sitio (Fontsource): Jost para texto y botones, Cormorant Garamond
+   para títulos. Allura no se carga: el letrero ya viene convertido a trazos SVG. */
+@import "@fontsource-variable/jost";
+@import "@fontsource/cormorant-garamond/400.css";
+@import "@fontsource/cormorant-garamond/500.css";
+
+/* Colores por función, no por color: los componentes usan estos nombres y el tema oscuro
+   cambia solo los valores. Claro: "Nude editorial"; oscuro: "Noche de salón". */
+:root {
+  color-scheme: light;
+  --canvas: #faf6f3;
+  --surface: #ffffff;
+  --surface-alt: #efe1d8;
+  --ink: #33262a;
+  --muted: #6b585d;
+  --line: #d9c4ba;
+  --line-soft: #ece0d8;
+  --primary: #f2ccd7;
+  --primary-hover: #ebb9c8;
+  --on-primary: #33262a;
+  --accent: #9a4a62;
+  --champagne: #c9ae7e;
+  --danger: #a8323e;
+  --danger-soft: #fbe9ea;
+  --on-danger: #ffffff;
+  --success: #2f6b45;
+  --success-soft: #e7f3ea;
+  --on-success: #ffffff;
+  --warning: #7a5a12;
+  /* Degradé del letrero (el fucsia solo vive aquí) y su brillo. */
+  --logo-1: #b0185a;
+  --logo-2: #de4f92;
+  --logo-3: #f3afcb;
+  --logo-glow: none;
+}
+
+/* Oscuro: el que elige el celular, salvo que la persona haya elegido "claro" en el sitio. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #1e1419;
+    --surface: #2b1f25;
+    --surface-alt: #33252c;
+    --ink: #f6ecef;
+    --muted: #cdbbc2;
+    --line: #5a4450;
+    --line-soft: #3a2a31;
+    --primary: #f2c4d2;
+    --primary-hover: #f7d6e0;
+    --on-primary: #1e1419;
+    --accent: #f2c4d2;
+    --champagne: #d9be8c;
+    --danger: #ffb3b8;
+    --danger-soft: #3a1c22;
+    --on-danger: #1e1419;
+    --success: #a8ddb5;
+    --success-soft: #1c2e24;
+    --on-success: #1e1419;
+    --warning: #f3d28a;
+    --logo-1: #ff4f9a;
+    --logo-2: #ff86ba;
+    --logo-3: #ffd0e3;
+    --logo-glow: drop-shadow(0 0 10px rgb(255 79 154 / 0.4));
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #1e1419;
+  --surface: #2b1f25;
+  --surface-alt: #33252c;
+  --ink: #f6ecef;
+  --muted: #cdbbc2;
+  --line: #5a4450;
+  --line-soft: #3a2a31;
+  --primary: #f2c4d2;
+  --primary-hover: #f7d6e0;
+  --on-primary: #1e1419;
+  --accent: #f2c4d2;
+  --champagne: #d9be8c;
+  --danger: #ffb3b8;
+  --danger-soft: #3a1c22;
+  --on-danger: #1e1419;
+  --success: #a8ddb5;
+  --success-soft: #1c2e24;
+  --on-success: #1e1419;
+  --warning: #f3d28a;
+  --logo-1: #ff4f9a;
+  --logo-2: #ff86ba;
+  --logo-3: #ffd0e3;
+  --logo-glow: drop-shadow(0 0 10px rgb(255 79 154 / 0.4));
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-champagne: var(--champagne);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-on-success: var(--on-success);
+  --color-warning: var(--warning);
+
+  --font-sans: "Jost Variable", "Jost", system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  /* Foco visible solo con teclado, en el color de acento. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Transiciones suaves de color en botones y enlaces; nada si se pide menos movimiento. */
+  @media (prefers-reduced-motion: no-preference) {
+    a,
+    button {
+      transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+    }
+  }
+}
+
+/* Animación de entrada del letrero (src/lib/logo-intro.ts): mientras la portada espera a GSAP,
+   las partes del letrero no se ven. Si GSAP no llega, la marca se quita a los 4 s. */
+.logo-intro .logo-hero .logo-glyph {
+  fill-opacity: 0;
+}
+
+.logo-intro .logo-hero .logo-line,
+.logo-intro .logo-hero .logo-word,
+.logo-intro .logo-hero .logo-bird {
+  opacity: 0;
+}

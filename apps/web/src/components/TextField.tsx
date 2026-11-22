@@ -20,16 +20,16 @@ export function TextField({ label, hint, error, ...input }: TextFieldProps) {
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className="h-12 rounded-xl border border-neutral-300 px-4 text-base outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/20 aria-invalid:border-red-600"
+        className="h-12 rounded-xl border border-line px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 aria-invalid:border-danger text-ink bg-surface"
         {...input}
       />
       {hint && (
-        <p id={`${id}-hint`} className="text-sm text-neutral-500">
+        <p id={`${id}-hint`} className="text-sm text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} className="text-sm text-red-700">
+        <p id={`${id}-error`} className="text-sm text-danger">
           {error}
         </p>
       )}
