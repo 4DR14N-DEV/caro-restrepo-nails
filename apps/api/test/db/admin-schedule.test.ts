@@ -202,6 +202,23 @@ describe("/api/admin/schedule", () => {
     expect((await save(caro.cookie, { hours, rules: defaultRules })).body.outside).toEqual([]);
   });
 
+  it("con todos los días cerrados no se ofrece ningún día y avisa las citas agendadas", async () => {
+    const caro = await asCaro();
+    const ana = await signedIn("+573001234567");
+    // Miércoles 25, 10:00 en Bogotá.
+    const wednesday = await appointment(ana.userId, "2026-11-25T15:00:00Z", [
+      "Semipermanente manos",
+    ]);
+    const hours = [1, 2, 3, 4, 5, 6].map(closed);
+
+    const response = await save(caro.cookie, { hours, rules: defaultRules });
+    expect(response.status).toBe(200);
+    expect(response.body.hours).toEqual(hours);
+    expect(response.body.outside.map((a: { id: string }) => a.id)).toEqual([wednesday]);
+    expect((await read(caro.cookie)).body.hours).toEqual(hours);
+    expect(await days()).toEqual([]);
+  });
+
   it("los bloqueos, descansos y aperturas tempranas ya cargados se mantienen", async () => {
     const caro = await asCaro();
     const added = await request(app)
