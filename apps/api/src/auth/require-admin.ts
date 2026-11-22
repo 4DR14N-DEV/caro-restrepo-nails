@@ -3,7 +3,7 @@ import type { Database } from "../db/client.js";
 import { currentUser } from "./require-user.js";
 
 // Deja pasar solo a una cuenta admin con sesión válida: 401 sin sesión, 403 si la
-// cuenta no es admin.
+// cuenta no es admin. La cuenta queda en `res.locals.user` para la ruta.
 export function requireAdmin(db: Database): RequestHandler {
   return async (req, res, next) => {
     const user = await currentUser(db, req, res);
@@ -12,6 +12,7 @@ export function requireAdmin(db: Database): RequestHandler {
       res.status(403).json({ error: "forbidden" });
       return;
     }
+    res.locals.user = user;
     next();
   };
 }

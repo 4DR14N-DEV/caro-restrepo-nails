@@ -17,6 +17,8 @@ import type {
   PasswordReset,
   PublicService,
   PublicUser,
+  PushKey,
+  PushSubscriptionInput,
   ScheduleSaved,
   ScheduleSettings,
   ScheduleSettingsRequest,
@@ -101,6 +103,11 @@ export const api = {
     call<AgendaChange>("POST", "/api/admin/appointments", body),
   updateAppointment: (id: string, body: AdminAppointmentRequest) =>
     call<AgendaChange>("PATCH", `/api/admin/appointments/${encodeURIComponent(id)}`, body),
+  pushKey: () => call<PushKey>("GET", "/api/admin/push/key"),
+  savePushSubscription: (body: PushSubscriptionInput) =>
+    call<null>("PUT", "/api/admin/push/subscription", body),
+  deletePushSubscription: (endpoint: string) =>
+    call<null>("POST", "/api/admin/push/subscription/delete", { endpoint }),
   schedule: () => call<ScheduleSettings>("GET", "/api/admin/schedule"),
   saveSchedule: (body: ScheduleSettingsRequest) =>
     call<ScheduleSaved>("PUT", "/api/admin/schedule", body),

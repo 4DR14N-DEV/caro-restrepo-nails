@@ -1,0 +1,30 @@
+Objetivo: entrega 12 de Caro Restrepo Nails: Caro recibe un aviso push cuando una clienta reserva, cancela o reprograma (RF18).
+Rama: `feat/entrega-12-avisos-push` · Estrategia de entrega: ask-on-risk (un PR) · Runner de tests: Vitest (pnpm). Verificación y revisión: OpenCode, por Engram.
+
+## Specs
+
+- S1 — RF18: "Recibir una notificación push cuando alguien reserva, cancela o reprograma." Qué avisa (tabla #1): "Solo lo que hace la clienta: reservar, cancelar o reprogramar. Lo que Caro hace desde el panel no la avisa, porque lo hizo ella."
+- S2 — Borrar cuenta (tabla #2): "Cancela las citas próximas, así que llega un aviso "Cita cancelada" por cada una, con el nombre que tenía la clienta antes de borrarse."
+- S3 — Textos (tabla #3): "Nueva cita: {nombre}, {servicio}, {día} a las {hora}" · "Cita cancelada: …" · "Cita reprogramada: {nombre}, {servicio}, del {antes} al {después}".
+- S4 — Al tocar el aviso (tabla #4): "Abre `/admin/agenda` en el día de la cita."
+- S5 — Dónde se activa (tabla #5): "En el inicio del panel: "Activar avisos en este dispositivo" / "Desactivar avisos". Puede activarlos en varios dispositivos. Solo cuentas admin (si no, 403)."
+- S6 — iPhone (tabla #6): "El push web en iOS solo funciona con la página instalada en la pantalla de inicio (iOS 16.4 o más nuevo). Agrego el manifest y, en iPhone, un aviso que explica cómo instalarla."
+- S7 — Envío (tabla #7): "Después de guardar el cambio y antes de responder, porque Netlify Functions puede congelar la función apenas responde. Tiene un tiempo límite corto, y si falla, la reserva igual se guarda. Las suscripciones vencidas (404/410) se borran."
+- S8 — Claves (tabla #8): "`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` como variables de entorno, con un comando para generarlas. Sin ellas no se envía nada (útil en desarrollo)."
+- S9 — Librería (tabla #9): "`web-push`, una dependencia nueva. Escribir el cifrado a mano no vale la pena."
+- S10 — Fuera de alcance (tabla #10): "Crear cuentas desde el panel y exportar los datos." Sin migraciones: la tabla `push_subscriptions` ya existe.
+
+## Tasks
+
+| ID  | Specs          | Ruta   | Estado    | Commit |
+| --- | -------------- | ------ | --------- | ------ |
+| T1  | S5, S6, S8, S9 | inline | hecha     | ver git log |
+| T2  | S1–S4, S7      | inline | pendiente | —      |
+
+Ruta: todo inline (T2 depende de T1; sin motivo de escritor delegado). Riesgo previsto: ítem 5 (dependencia nueva `web-push`) e ítem 2 (endpoint solo para admin). Cada tarea va en su commit. Previsión: ~900 líneas propias.
+
+## Log
+
+- L1 (2026-11-22, usuario): "dale, continuemos con la entrega 12" → propuesta: tabla de 10 decisiones para RF18.
+- L2 (2026-11-22, usuario): "arramquemos así" (aprueba las decisiones 1–10 y las dos tareas, citadas en S1–S10).
+- L3: T1. Dependencia `web-push` ^3.6.7 (no la 4.0.0, publicada hace 16 días y con cambio de versión mayor) y `@types/web-push`. API: `adminPushRouter` (`push/admin-routes.ts`, solo admin): `GET /api/admin/push/key` → `{ publicKey }` (null sin claves); `PUT /api/admin/push/subscription` guarda o actualiza por `endpoint` a nombre de la cuenta (204); `POST /api/admin/push/subscription/delete` borra la de ese endpoint y esa cuenta (204). `requireAdmin` deja la cuenta en `res.locals.user`. `push/sender.ts`: `PushService` (los tests usan uno falso), `webPushService` (3 s de tiempo límite, TTL de un día, 404/410 → "gone") y `pushServiceFromEnv` (sin las tres variables VAPID no hay avisos; si falta alguna, lo dice en el log). `pnpm --filter @caro/api push:keys` genera las claves. shared `push.ts`: `pushSubscriptionSchema` (endpoint solo https), `pushEndpointSchema`, `PushKey`, `PushPayload`. Web: `public/sw.js` (muestra el aviso y al tocarlo abre su `url` del mismo sitio), `manifest.webmanifest`, íconos y enlaces en `BaseLayout`; `PushToggle` en el inicio, solo para Caro ("Avisos de citas"; "Activar avisos en este dispositivo" / "Desactivar avisos"; bloqueados, iPhone sin instalar, sin soporte, sin claves y errores; al cargar vuelve a guardar la suscripción existente; al desactivar borra primero en el servidor). README actualizado. `.env.example` quedó modificado con las variables VAPID pero fuera del commit: la configuración de permisos no deja leer archivos `.env*`. Supuesto: un endpoint lo registra solo Caro, así que no se limita a una lista de servicios de push. RED: API 10 de 10, PushToggle (inexistente), AuthStatus 1 → verdes; `push-sender` y `base64UrlToBytes` se escribieron después y pasaron de una. Chequeos: test 250/250, test:db 269/269, typecheck, lint, formato y build web en verde.
