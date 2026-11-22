@@ -165,9 +165,11 @@ describe("AdminClients: restablecer contraseña", () => {
     );
   });
 
-  it("si la clienta ya no está, lo dice", async () => {
+  it("si la clienta ya no está, lo dice y recarga la lista", async () => {
+    let lists = 0;
     mockApi({
-      "GET /api/admin/clients/list": loaded,
+      "GET /api/admin/clients/list": () =>
+        ++lists === 1 ? loaded() : json(200, { clients: [ana, luisa] }),
       "POST /api/admin/clients/c2/password": () => json(404, { error: "not_found" }),
     });
     render(<AdminClients />);
@@ -178,6 +180,8 @@ describe("AdminClients: restablecer contraseña", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Esa clienta ya no está disponible.",
     );
+    await vi.waitFor(() => expect(screen.queryByText("Marta")).toBeNull());
+    expect(screen.getByText("2 clientas")).toBeTruthy();
   });
 
   it("si la sesión venció, pide ingresar", async () => {

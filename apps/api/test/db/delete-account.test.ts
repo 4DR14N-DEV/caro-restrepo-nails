@@ -259,6 +259,29 @@ describe("borrar la cuenta mientras llega otro pedido", () => {
     expect(await scheduledOf(ana.id)).toEqual([]);
   });
 
+  it("una cita que Caro edita a su nombre no se guarda en la cuenta borrada", async () => {
+    const ana = await client();
+    const caro = await signedIn("+573007445676", "Caro Restrepo", "admin");
+    const manos = await service("Semipermanente manos");
+    const id = await appointment(ana.id, "2026-11-25T15:00:00Z", ["Semipermanente manos"]);
+
+    const [deleted, edited] = await whileDeleting(
+      ana.id,
+      ana.here,
+      () =>
+        request(app)
+          .patch(`/api/admin/appointments/${id}`)
+          .set("Cookie", caro.cookie)
+          .send({ clientId: ana.id, serviceIds: [manos.id], date: "2026-11-25", time: "11:00" })
+          .then((r) => r),
+      'select "id" from "users"',
+    );
+    expect(deleted.status).toBe(204);
+    expect(edited.status).toBe(409);
+    expect(edited.body.error).toBe("client_unavailable");
+    expect(await scheduledOf(ana.id)).toEqual([]);
+  });
+
   it("un cambio de contraseña no le deja contraseña a la cuenta borrada", async () => {
     const ana = await client();
     const other = `session=${await createSession(database.db, ana.id)}`;

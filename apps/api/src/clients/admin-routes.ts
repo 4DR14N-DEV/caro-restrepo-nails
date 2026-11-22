@@ -99,7 +99,7 @@ export function adminClientsRouter(db: Database, now: () => Date): Router {
     const client = await db.transaction(async (tx) => {
       const [row] = await tx
         .update(users)
-        .set({ passwordHash, updatedAt: new Date() })
+        .set({ passwordHash, updatedAt: now() })
         .where(and(eq(users.id, id), eq(users.role, "client"), isNull(users.anonymizedAt)))
         .returning({ id: users.id, name: users.name, phone: users.phone });
       if (!row?.phone) return undefined;

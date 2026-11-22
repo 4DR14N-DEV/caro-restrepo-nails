@@ -128,6 +128,7 @@ describe("POST /api/admin/clients/:id/password", () => {
     const row = await userRow(ana.userId);
     expect(await verifyPassword(row?.passwordHash ?? "", response.body.password)).toBe(true);
     expect(await verifyPassword(row?.passwordHash ?? "", "hash-de-prueba")).toBe(false);
+    expect(row?.updatedAt).toEqual(now());
 
     // Con la clave nueva entra.
     const login = await request(app)

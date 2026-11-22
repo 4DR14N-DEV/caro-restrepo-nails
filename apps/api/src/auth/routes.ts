@@ -211,7 +211,7 @@ export function authRouter(db: Database, clientIp: ClientIp, now: () => Date): R
     const changed = await db.transaction(async (tx) => {
       const [row] = await tx
         .update(users)
-        .set({ passwordHash, updatedAt: new Date() })
+        .set({ passwordHash, updatedAt: now() })
         .where(and(eq(users.id, user.id), isNull(users.anonymizedAt)))
         .returning({ id: users.id });
       if (!row) return false;

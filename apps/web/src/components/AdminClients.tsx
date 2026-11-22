@@ -49,8 +49,9 @@ export function AdminClients() {
   const [reset, setReset] = useState<PasswordReset>();
   const [problem, setProblem] = useState<string>();
 
-  const fetchClients = useCallback(async () => {
-    setLoad({ state: "loading" });
+  // `quiet` recarga sin volver a "Cargando…" (por ejemplo, después de un aviso).
+  const fetchClients = useCallback(async (quiet = false) => {
+    if (!quiet) setLoad({ state: "loading" });
     const result = await api.adminClients();
     if (result.ok) return setLoad({ state: "ready", clients: result.data.clients });
     if (result.status === 401) return setLoad({ state: "signed-out" });
@@ -83,9 +84,12 @@ export function AdminClients() {
     setConfirming(undefined);
     if (result.ok) return setReset(result.data);
     if (lostAccess(result)) return;
-    setProblem(
-      result.status === 404 ? "Esa clienta ya no está disponible." : formErrorMessage(result),
-    );
+    if (result.status === 404) {
+      // Ya no tiene cuenta: se recarga la lista para que no quede a la vista.
+      setProblem("Esa clienta ya no está disponible.");
+      return void fetchClients(true);
+    }
+    setProblem(formErrorMessage(result));
   }
 
   if (load.state === "loading") return <p className="text-neutral-600">Cargando clientas…</p>;
