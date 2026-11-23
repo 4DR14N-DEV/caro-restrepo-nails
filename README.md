@@ -244,3 +244,9 @@ docker run --rm -v "$PWD:/backup" postgres:17 \
 - Conventional Commits (`feat:`, `fix:`, `docs:`…), una rama por funcionalidad y PR hacia `main`.
 - Dinero en pesos colombianos como enteros; fechas `timestamptz`, mostradas en America/Bogota.
 - Test primero en el motor de disponibilidad y en las reglas de negocio.
+
+## Licencia
+
+Software propietario. © 2026 Adrian Restrepo ([4DR14N-DEV](https://github.com/4DR14N-DEV)).
+Todos los derechos reservados: no se permite usarlo, copiarlo, modificarlo ni distribuirlo sin
+autorización por escrito. Ver [LICENSE](LICENSE).

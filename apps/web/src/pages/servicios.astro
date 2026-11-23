@@ -6,9 +6,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 <BaseLayout
   title="Servicios · Caro Restrepo Nails"
   description="Servicios de Caro Restrepo Nails con precio y duración: semipermanente, acrílico, press on y más."
+  bottomBar
 >
-  <!-- Espacio abajo para que el resumen fijo no tape el último servicio. -->
-  <main class="mx-auto flex max-w-md flex-col gap-6 px-4 pt-10 pb-28">
+  <!-- El espacio para que el resumen fijo no tape nada lo deja el pie (bottomBar). -->
+  <main class="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
     <h1 class="text-3xl">Servicios</h1>
     <p class="text-muted">
       Elige uno o varios para ver cuánto tiempo y cuánto cuesta en total.{" "}

@@ -1,6 +1,7 @@
 {
   "name": "@caro/api",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
