@@ -123,7 +123,7 @@ export function AdminServices() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary"
+          className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary md:self-start md:px-8"
         >
           Agregar servicio
         </button>
@@ -135,10 +135,11 @@ export function AdminServices() {
         </p>
       )}
 
-      <ul className="flex flex-col gap-3">
+      {/* En tablet, los servicios van en grilla; el que se edita ocupa la fila entera. */}
+      <ul className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3">
         {load.services.map((service) =>
           editing === service.id ? (
-            <li key={service.id}>
+            <li key={service.id} className="md:col-span-full">
               <ServiceForm
                 service={service}
                 save={guarded((data) => api.updateService(service.id, data))}
@@ -149,7 +150,7 @@ export function AdminServices() {
           ) : (
             <li
               key={service.id}
-              className={`flex flex-col gap-3 rounded-xl border border-line px-4 py-3 ${
+              className={`flex flex-col gap-3 rounded-xl border border-line px-4 py-3 md:justify-between ${
                 service.active ? "" : "bg-surface-alt text-muted"
               }`}
             >

@@ -192,74 +192,81 @@ export function AdminSchedule() {
           Horario de la semana
         </h2>
         <p className="text-sm text-muted">Domingos y festivos no se atiende.</p>
-        {hours.map((day, index) => {
-          const name = DAY_NAMES[day.weekday] ?? "";
-          const open = day.opensAt !== null && day.closesAt !== null;
-          const errorOf = (field: string) => errors[`hours.${index}.${field}`];
-          return (
-            <fieldset
-              key={day.weekday}
-              className="flex flex-col gap-2 rounded-xl border border-line p-4"
-            >
-              <legend className="px-1 font-medium">{name}</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={open}
-                  onChange={(event) =>
-                    changeDay(
-                      day.weekday,
-                      event.target.checked
-                        ? { opensAt: DEFAULT_OPENING, closesAt: DEFAULT_CLOSING }
-                        : { opensAt: null, closesAt: null },
-                    )
-                  }
-                  className="h-5 w-5"
-                />
-                Abre
-              </label>
-              {open ? (
-                <div className="flex gap-3">
-                  <label className="flex flex-1 flex-col gap-1 text-sm">
-                    Desde
-                    <select
-                      value={day.opensAt ?? ""}
-                      onChange={(event) => changeDay(day.weekday, { opensAt: event.target.value })}
-                      className={select}
-                    >
-                      {HOURS.map((hour) => (
-                        <option key={hour} value={hour}>
-                          {formatTime(hour)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-1 flex-col gap-1 text-sm">
-                    Hasta
-                    <select
-                      value={day.closesAt ?? ""}
-                      onChange={(event) => changeDay(day.weekday, { closesAt: event.target.value })}
-                      className={select}
-                    >
-                      {HOURS.map((hour) => (
-                        <option key={hour} value={hour}>
-                          {formatTime(hour)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              ) : (
-                <p className="text-sm text-muted">Cerrado</p>
-              )}
-              {(errorOf("opensAt") ?? errorOf("closesAt")) && (
-                <p role="alert" className={fieldError}>
-                  {errorOf("opensAt") ?? errorOf("closesAt")}
-                </p>
-              )}
-            </fieldset>
-          );
-        })}
+        {/* En tablet, los días van en grilla. */}
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3">
+          {hours.map((day, index) => {
+            const name = DAY_NAMES[day.weekday] ?? "";
+            const open = day.opensAt !== null && day.closesAt !== null;
+            const errorOf = (field: string) => errors[`hours.${index}.${field}`];
+            return (
+              <fieldset
+                key={day.weekday}
+                className="flex flex-col gap-2 rounded-xl border border-line p-4"
+              >
+                <legend className="px-1 font-medium">{name}</legend>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={open}
+                    onChange={(event) =>
+                      changeDay(
+                        day.weekday,
+                        event.target.checked
+                          ? { opensAt: DEFAULT_OPENING, closesAt: DEFAULT_CLOSING }
+                          : { opensAt: null, closesAt: null },
+                      )
+                    }
+                    className="h-5 w-5"
+                  />
+                  Abre
+                </label>
+                {open ? (
+                  <div className="flex gap-3">
+                    <label className="flex flex-1 flex-col gap-1 text-sm">
+                      Desde
+                      <select
+                        value={day.opensAt ?? ""}
+                        onChange={(event) =>
+                          changeDay(day.weekday, { opensAt: event.target.value })
+                        }
+                        className={select}
+                      >
+                        {HOURS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {formatTime(hour)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-1 flex-col gap-1 text-sm">
+                      Hasta
+                      <select
+                        value={day.closesAt ?? ""}
+                        onChange={(event) =>
+                          changeDay(day.weekday, { closesAt: event.target.value })
+                        }
+                        className={select}
+                      >
+                        {HOURS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {formatTime(hour)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">Cerrado</p>
+                )}
+                {(errorOf("opensAt") ?? errorOf("closesAt")) && (
+                  <p role="alert" className={fieldError}>
+                    {errorOf("opensAt") ?? errorOf("closesAt")}
+                  </p>
+                )}
+              </fieldset>
+            );
+          })}
+        </div>
         {errors.hours && (
           <p role="alert" className={fieldError}>
             {errors.hours}
@@ -274,26 +281,29 @@ export function AdminSchedule() {
         <p className="text-sm text-muted">
           El margen nuevo vale para las citas que se reserven desde ahora.
         </p>
-        {rules &&
-          RULE_FIELDS.map(({ key, label, step }) => (
-            <label key={key} className="flex flex-col gap-1 text-sm">
-              {label}
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={step}
-                value={rules[key]}
-                onChange={(event) => setRules({ ...rules, [key]: event.target.value })}
-                className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
-              />
-              {errors[`rules.${key}`] && (
-                <span role="alert" className={fieldError}>
-                  {errors[`rules.${key}`]}
-                </span>
-              )}
-            </label>
-          ))}
+        {/* En tablet, las reglas van en dos columnas. */}
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:items-start">
+          {rules &&
+            RULE_FIELDS.map(({ key, label, step }) => (
+              <label key={key} className="flex flex-col gap-1 text-sm">
+                {label}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={step}
+                  value={rules[key]}
+                  onChange={(event) => setRules({ ...rules, [key]: event.target.value })}
+                  className="h-11 rounded-xl border border-line px-3 text-base text-ink bg-surface"
+                />
+                {errors[`rules.${key}`] && (
+                  <span role="alert" className={fieldError}>
+                    {errors[`rules.${key}`]}
+                  </span>
+                )}
+              </label>
+            ))}
+        </div>
       </section>
 
       {problem && (
@@ -328,7 +338,7 @@ export function AdminSchedule() {
       <button
         type="submit"
         disabled={busy}
-        className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary disabled:opacity-60"
+        className="h-12 rounded-xl bg-primary hover:bg-primary-hover text-base font-medium text-on-primary disabled:opacity-60 md:self-start md:px-10"
       >
         {busy ? "Guardando…" : "Guardar"}
       </button>

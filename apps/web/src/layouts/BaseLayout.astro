@@ -10,9 +10,11 @@ interface Props {
   // Consultas a la API que la página hace al cargar: el navegador las pide apenas llega el
   // HTML, mientras baja el JavaScript, y el componente encuentra la respuesta lista.
   preload?: string[];
+  // true en el panel de Caro: el encabezado acompaña el ancho del panel en tablet.
+  wide?: boolean;
 }
 
-const { title, description, brand = true, preload = [] } = Astro.props;
+const { title, description, brand = true, preload = [], wide = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -43,7 +45,7 @@ const { title, description, brand = true, preload = [] } = Astro.props;
     <slot name="head" />
   </head>
   <body class="min-h-dvh bg-canvas font-sans text-ink antialiased">
-    <SiteHeader brand={brand} />
+    <SiteHeader brand={brand} wide={wide} />
     <slot />
   </body>
 </html>
