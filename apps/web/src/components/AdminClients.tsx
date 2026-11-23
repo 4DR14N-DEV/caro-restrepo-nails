@@ -131,7 +131,7 @@ export function AdminClients() {
 
   return (
     <div className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm md:max-w-md">
         Buscar por nombre o celular
         <input
           type="search"
@@ -174,7 +174,7 @@ export function AdminClients() {
       {shown.length === 0 ? (
         <p className="text-muted">No hay clientas con ese nombre o celular.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-3 md:grid md:grid-cols-2 md:items-start lg:grid-cols-3">
           {shown.map((client) => (
             <li
               key={client.id}

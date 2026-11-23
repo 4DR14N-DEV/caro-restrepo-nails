@@ -176,30 +176,33 @@ export function AdminAgenda({ today = bogotaDate(new Date()) }: Props) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-2">
-        {VIEWS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={view === option.value}
-            onClick={() => go(option.value, anchor)}
-            className={`${button} flex-1 ${view === option.value ? "border-primary bg-primary text-on-primary" : ""}`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {/* En tablet, la vista y la navegación comparten una fila. */}
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex gap-2 md:w-80">
+          {VIEWS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={view === option.value}
+              onClick={() => go(option.value, anchor)}
+              className={`${button} flex-1 ${view === option.value ? "border-primary bg-primary text-on-primary" : ""}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={() => go(view, step(view, anchor, -1))} className={button}>
-          {previousLabel}
-        </button>
-        <button type="button" onClick={() => go(view, today)} className={button}>
-          Hoy
-        </button>
-        <button type="button" onClick={() => go(view, step(view, anchor, 1))} className={button}>
-          {nextLabel}
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <button type="button" onClick={() => go(view, step(view, anchor, -1))} className={button}>
+            {previousLabel}
+          </button>
+          <button type="button" onClick={() => go(view, today)} className={button}>
+            Hoy
+          </button>
+          <button type="button" onClick={() => go(view, step(view, anchor, 1))} className={button}>
+            {nextLabel}
+          </button>
+        </div>
       </div>
 
       <label className="flex items-center gap-3">
@@ -364,7 +367,7 @@ function DayView({
       {appointments.length === 0 ? (
         <p className="text-muted">No hay citas este día.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-3 md:grid md:grid-cols-2 md:items-start">
           {appointments.map((appointment) => (
             <AgendaCard
               key={appointment.id}
@@ -385,7 +388,7 @@ function DayView({
   );
 }
 
-// En el celular no entran columnas: la semana es una lista de días.
+// En el celular no entran columnas: la semana es una lista de días. En tablet, una grilla.
 function WeekView({
   anchor,
   appointments,
@@ -399,8 +402,8 @@ function WeekView({
 }) {
   const days = weekDays(anchor);
   return (
-    <div className="flex flex-col gap-4">
-      <h2 className="text-2xl">Semana del {formatDay(days[0] ?? anchor)}</h2>
+    <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start lg:grid-cols-3">
+      <h2 className="text-2xl md:col-span-full">Semana del {formatDay(days[0] ?? anchor)}</h2>
       {days.map((date) => {
         const ofDay = appointments.filter((appointment) => appointment.date === date);
         return (
@@ -468,7 +471,7 @@ function MonthView({
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-2xl">{formatMonth(anchor)}</h2>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm">
+      <div className="grid grid-cols-7 gap-1 text-center text-sm md:gap-2 md:text-base">
         {WEEKDAY_INITIALS.map((initial, index) => (
           <span key={index} aria-hidden="true" className="text-muted">
             {initial}
@@ -487,13 +490,13 @@ function MonthView({
                 type="button"
                 aria-label={`${formatDay(date)}: ${count} ${count === 1 ? "cita" : "citas"}${blocked ? ", bloqueado" : ""}`}
                 onClick={() => onOpen(date)}
-                className={`flex h-14 flex-col items-center justify-center rounded-lg border ${
+                className={`flex h-14 flex-col items-center justify-center rounded-lg border md:h-24 ${
                   date.startsWith(month) ? "border-line" : "border-transparent text-muted/60"
                 }`}
               >
                 <span>{Number(date.slice(8))}</span>
-                {count > 0 && <span className="text-xs font-medium">{count}</span>}
-                {blocked && <span className="text-[10px] text-muted">Bloqueado</span>}
+                {count > 0 && <span className="text-xs font-medium md:text-sm">{count}</span>}
+                {blocked && <span className="text-[10px] text-muted md:text-xs">Bloqueado</span>}
               </button>
             );
           })}
