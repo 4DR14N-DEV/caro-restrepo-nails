@@ -1,6 +1,7 @@
 {
   "name": "@caro/shared",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
   "exports": {

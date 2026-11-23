@@ -1,0 +1,35 @@
+---
+interface Props {
+  // true en las páginas con una barra fija abajo: el pie deja espacio para que no lo tape.
+  bottomBar?: boolean;
+}
+
+const { bottomBar = false } = Astro.props;
+// Año del build: se actualiza con cada despliegue.
+const year = new Date().getFullYear();
+---
+
+<!--
+  "sticky top-[100dvh]" baja el pie al fondo de la pantalla en las páginas cortas, sin cambiar
+  cómo se acomoda el resto de la página.
+-->
+<footer
+  class:list={[
+    "sticky top-[100dvh] mx-auto max-w-md px-4 pt-6 text-center text-xs text-muted",
+    bottomBar ? "pb-28" : "pb-4",
+  ]}
+>
+  <p>
+    {/* Espacio explícito: Astro quita el salto de línea entre el texto y el link. */}
+    {"Por "}
+    <a
+      href="https://github.com/4DR14N-DEV"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex min-h-11 items-center underline underline-offset-2"
+    >
+      4DR14N-DEV
+    </a>
+  </p>
+  <p>© {year} Caro Restrepo Nails. Todos los derechos reservados.</p>
+</footer>
